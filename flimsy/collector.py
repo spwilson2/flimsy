@@ -1,8 +1,15 @@
-class InstanceCollector(object):
-    instances = []
-    def __new__(typ, *args, **kwargs):
-        obj = super(InstanceCollector, typ).__new__(*args, **kwargs)
-        typ.instances.append(obj)
-        return obj
+if __name__ == '__main__':
+    class Ex(InstanceCollector):
+        pass
 
-class SuiteCollector()
+    class Der(Ex):
+        pass
+
+    class Ex2(InstanceCollector):
+        pass
+
+    Ex()
+    Ex()
+    Der()
+    Ex2()
+    print(Ex.instances)
