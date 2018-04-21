@@ -12,7 +12,8 @@ class TestCase(object):
 
     def __init__(self, *args, **kwargs):
         name = kwargs.pop('name', None)
-        self.name = name
+        if name is not None:
+            self.name = name
         self.init(*args, **kwargs)
         self.status = NotRun
     

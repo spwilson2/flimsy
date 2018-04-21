@@ -53,3 +53,45 @@ class ReverseSuite(flimsy.TestSuite):
     def __iter__(self):
         return reversed(self.tests)
 ReverseSuite(tests, name='Reversed Truth Tests')
+
+############
+# Fixtures
+############
+
+# Like many test frameworks Flimsy supports the concept of fixtures.
+# Fixtures are a way to perform setup and cleanup of requirements for test execution.
+
+# Unlike some test frameworks, fixtures are enumerated and initialized in two steps.
+# After all tests files have been enumerated and all tests have been parameterized, fixtures for each test scheduled to run will be parameterized by calling init().
+# Then the test execution phase begins. 
+# Before each test item is executed the associated fixture will be setup(), and after the test, teardown() will be called.
+# This two phase approach is particularly useful for interacting with build systems or any time a fixture needs to know of all other fixtures or scheduled tests.
+class BuildSystemFixture(flimsy.Fixture):
+    targets = []
+    def setup(self, testsuites):
+        if not subprocess.call('make ' + ''.join(targets)):
+            testsuites.skip()
+
+flimsy.globalfixture(BuildSystemFixture(name='Make Build System'))
+class BuildTargetFixture(flimsy.Fixture):
+    def init(self, target):
+        BuildSystemFixture.targets.append(target)
+        self.target = target
+# In the above we create a BuildTargetFixture and a global BuildSystemTarget.
+# When each BuildTargetFixture is initialized before tests begin, they add themselves to this list.
+# Then, just before the first test suite begins running, the setup method of the BuildSystemFixture is executed, and all the targets are supplied to make.
+
+
+# Fixtures can also skip tests if they are unable to perform the necessary initialization.
+class SkipFixture(flimsy.Fixture):
+    name = 'Test Skipper'
+    def setup(self, testitem):
+        testitem.skip()
+
+    def teardown(self, testitem):
+        pass
+
+class SkippedTest(flimsy.TestCase):
+    fixtures = [SkipFixture()]
+    def test(self):
+        assert False

@@ -5,9 +5,10 @@ import traceback
 
 import six
 
+import config
 import suite as suite_mod
 import test as test_mod
-import config
+import fixture as fixture_mod
 
 # Match filenames that either begin or end with 'test' or tests and use
 # - or _ to separate additional name components.
@@ -52,6 +53,7 @@ class Loader(object):
     def __init__(self):
         self.suites = []
         self.tests = []
+        self.fixtures = []
         self.filepath_filter = default_filepath_filter
 
     def load_root(self, root):
@@ -94,10 +96,14 @@ class Loader(object):
         def cleanup():
             sys.path[:] = old_path
             os.chdir(cwd)
+            # TODO Rather than repeat this create a collector, use the corrector to create a __new__ function for each base we want to collect.
+            # Then just call the reset on the collector.
             if test_mod.instances:
                 del test_mod.instances[:]
             if suite_mod.instances:
                 del suite_mod.instances[:]
+            if fixture_mod.instances:
+                del fixture_mod.instances[:]
             config.reset_for_module()
             print self.suites
             print self.tests
@@ -114,12 +120,12 @@ class Loader(object):
     
         new_tests = test_mod.instances
         new_suites = suite_mod.instances
-        new_tests = tuple() if new_tests is None else new_tests
-        new_suites = tuple() if new_suites is None else new_suites
+        new_fixtures = fixture_mod.instances
 
         print path
         self.tests.extend(new_tests)
         self.suites.extend(new_suites)
+        self.fixtures.extend(new_fixtures)
 
         # Create a module test suite for those not contained in a suite.
         orphan_tests = set(new_tests)
