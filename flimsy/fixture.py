@@ -1,7 +1,17 @@
 instances = []
+global_fixtures = []
 
 class TestScheduleUnknown(Exception):
     pass
+class SkipException(Exception):
+    def __init__(self, fixture, testitem):
+        self.fixture = fixture
+        self.testitem = testitem
+
+        self.msg = 'Skipping "%s", fixture "%s" setup failed.' % (
+               testitem.name, fixture.name
+        ) 
+        super(SkipException, self).__init__(self.msg)
 
 class Fixture(object):
     def __new__(klass, *args, **kwargs):
@@ -29,6 +39,8 @@ class Fixture(object):
     def test_schedule(self, schedule):
         self._test_schedule = schedule
         self.__parameterize()
+    def skip(self, testitem):
+        raise SkipException(self, testitem)
 
     def init(self):
         pass
@@ -44,4 +56,4 @@ def globalfixture(fixture):
     '''Store the given fixture as a global fixture. Its setup() method 
     will be called before the first test is executed.
     '''
-    pass
+    global_fixtures.append(fixture)

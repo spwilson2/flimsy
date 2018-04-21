@@ -99,7 +99,7 @@ class SkippedTest(flimsy.TestCase):
 # Runners
 ##############
 
-# To allow modification of test running logic, TestCases and TestSuites contain a runner class attribute which defines the Runner Subclass to use.
+# To allow modification of test running logic, TestCases and TestSuites contain a runner class attribute which defines the Runner subclass to use.
 # This allows modification of test running logic.
 # For example, you might wish that the test suite would fail all additional tests after a single test has failed.
 # To modify the default running behavior, overrride the run method.

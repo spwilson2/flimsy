@@ -1,10 +1,14 @@
 import functools
+import runner as runner_mod
 
 # TODO: Enum of test states
 NotRun, Passed, Failed, Skipped = range(4)
 instances = []
 
 class TestCase(object):
+    fixtures = tuple()
+    runner = runner_mod.TestRunner
+
     def __new__(klass, *args, **kwargs):
         obj = super(TestCase, klass).__new__(klass, *args, **kwargs)
         instances.append(obj)

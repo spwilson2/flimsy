@@ -1,6 +1,11 @@
+import runner as runner_mod
+
 instances = []
 
 class TestSuite(object):
+    fixtures = tuple()
+    runner = runner_mod.SuiteRunner
+
     def __new__(klass, *args, **kwargs):
         obj = super(TestSuite, klass).__new__(klass, *args, **kwargs)
         instances.append(obj)

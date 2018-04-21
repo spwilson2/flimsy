@@ -68,11 +68,12 @@ ReverseSuite(tests, name='Reversed Truth Tests')
 # This two phase approach is particularly useful for interacting with build systems or any time a fixture needs to know of all other fixtures or scheduled tests.
 class BuildSystemFixture(flimsy.Fixture):
     targets = []
-    def setup(self, testsuites):
-        if not subprocess.call('make ' + ''.join(targets)):
-            testsuites.skip()
+    def setup(self, testitem):
+        import subprocess
+        if subprocess.call('make ' + ''.join(self.targets), shell='/bin/bash'):
+            self.skip(testitem)
 
-flimsy.globalfixture(BuildSystemFixture(name='Make Build System'))
+#flimsy.globalfixture(BuildSystemFixture(name='Make Build System'))
 class BuildTargetFixture(flimsy.Fixture):
     def init(self, target):
         BuildSystemFixture.targets.append(target)
@@ -95,3 +96,30 @@ class SkippedTest(flimsy.TestCase):
     fixtures = [SkipFixture()]
     def test(self):
         assert False
+
+##############
+# Runners
+##############
+
+# For more advanced test writers flimsy enables modification of test running logic.
+# TestCases and TestSuites contain a runner class attribute which defines the Runner subclass to use.
+# As an example, you might wish that the test suite would fail all additional tests after a single test has failed.
+# To modify the default running behavior, overrride the run method.
+class IterativeRunner(flimsy.SuiteRunner):
+    def run(self):
+        self.presuite()
+        test_iter = iter(self.suite)
+        for test in test_iter:
+            result = test.runner(test).run()
+            if result == flimsy.Failed:
+                print 'Test "%s" failed, skipping remaining tests in suite' % test.name
+                # TODO Define logging interface to report this.
+                break
+        for test in test_iter:
+            test.result = flimsy.Failed
+        self.postsuite()
+
+class FailFastSuite(flimsy.TestSuite):
+    runner = IterativeRunner
+
+FailFastSuite(tests, name='Fail Fast Test Suite')

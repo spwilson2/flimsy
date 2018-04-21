@@ -105,11 +105,8 @@ class Loader(object):
             if fixture_mod.instances:
                 del fixture_mod.instances[:]
             config.reset_for_module()
-            print self.suites
-            print self.tests
 
         try:
-            print 'Execing', path
             execfile(path, newdict, newdict)
             #six.exec_(open(path).read(), newdict, newdict)
         except Exception as e:
@@ -122,7 +119,6 @@ class Loader(object):
         new_suites = suite_mod.instances
         new_fixtures = fixture_mod.instances
 
-        print path
         self.tests.extend(new_tests)
         self.suites.extend(new_suites)
         self.fixtures.extend(new_fixtures)
@@ -153,7 +149,6 @@ class Loader(object):
             dirnames.sort()
             if filenames:
                 filenames.sort()
-                print filenames
                 filepaths = [os.path.join(root, filename) \
                              for filename in filenames]
                 filepaths = filter(self.filepath_filter, filepaths)
