@@ -7,6 +7,7 @@ import six
 
 import suite as suite_mod
 import test as test_mod
+import config
 
 # Match filenames that either begin or end with 'test' or tests and use
 # - or _ to separate additional name components.
@@ -97,6 +98,7 @@ class Loader(object):
                 del test_mod.instances[:]
             if suite_mod.instances:
                 del suite_mod.instances[:]
+            config.reset_for_module()
             print self.suites
             print self.tests
 
@@ -121,13 +123,16 @@ class Loader(object):
 
         # Create a module test suite for those not contained in a suite.
         orphan_tests = set(new_tests)
-        for test in new_suites:
-            orphan_tests.remove(test)
+        for suite in new_suites:
+            for test in suite:
+                # Remove the test if it wasn't already removed. 
+                # (Suites may contain copies of tests.)
+                if test in orphan_tests:
+                    orphan_tests.remove(test)
         if orphan_tests:
-            orphan_tests = [(new_tests.index(test), test) for test in orphan_tests]
-            orphan_tests.sort()
-            # TODO/FIXME Use the config based default for this suite type.
-            module_suite = suite_mod.TestSuite(tests=orphan_tests, name=path_as_suitename(path))
+            orphan_tests = sorted(orphan_tests, key=new_tests.index)
+            # Use the config based default to group all uncollected tests.
+            module_suite = config.defaultsuite(tests=orphan_tests, name=path_as_suitename(path))
             self.suites.append(module_suite)
         cleanup()
 
