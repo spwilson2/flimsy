@@ -1,3 +1,5 @@
+import functools
+
 # TODO: Enum of test states
 NotRun, Passed, Failed, Skipped = range(4)
 instances = []
@@ -16,3 +18,17 @@ class TestCase(object):
     
     def init(self):
         pass
+
+def testfunction(f):
+    testcase = TestCase(name=f.__name__)
+    # TODO/FIXME How to eat the self argument??
+    testcase.test = f
+    return f
+
+class TestApplication(TestCase):
+    def init(self, filename):
+        # TODO Save current file being loaded path in order to properly resolve the filename path.
+        self.filename = filename
+
+def test_application(name, filename):
+    return TestApplication(filename, name=name)

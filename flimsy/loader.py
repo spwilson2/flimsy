@@ -36,7 +36,7 @@ def _assert_files_in_same_dir(files):
                 assert os.path.dirname(f) == directory
 
 class Loader(object):
-    '''Base class for discovering tests.
+    '''Class for discovering tests.
 
     To simply discover and load all tests using the default filter create an
     instance and `load_root`.
@@ -85,12 +85,13 @@ class Loader(object):
 
         # Add the file's containing directory to the system path. So it can do
         # relative imports naturally.
+        old_path = sys.path[:]
         sys.path.insert(0, os.path.dirname(path))
         cwd = os.getcwd()
         os.chdir(os.path.dirname(path))
 
         def cleanup():
-            del sys.path[0]
+            sys.path[:] = old_path
             os.chdir(cwd)
             if test_mod.instances:
                 del test_mod.instances[:]

@@ -22,4 +22,13 @@ false_test = Test(False)
 # Create another parameterized version, but supply a name rather than the parameterize's version.
 true_test = Test(True, name='TestPassCustom')
 
-#print flimsy.TestCase.instances
+
+# Create tests from a function, name of the function is automatically used as test name.
+@flimsy.testfunction
+def test_function(test_parameters):
+    pass
+
+# Create tests using non-python related applications and checking return value.
+flimsy.test_application('Script Test', 'test.sh')
+
+#print(flimsy.test.instances)
