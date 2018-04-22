@@ -1,7 +1,9 @@
+import itertools
 
+import config
 import loader as loader_mod
 import fixture as fixture_mod
-import itertools
+import log
 
 # Test Phases:
 # * Test Collection
@@ -28,8 +30,7 @@ class EntireTestCollection(TestItem):
     def __iter__(self):
         return iter(self.suites)
 
-def main():
-    
+def dorun():    
     testloader = loader_mod.Loader()
     testloader.load_root('example')
 
@@ -64,3 +65,10 @@ def main():
         # Run all suites.
         for suite in test_schedule:
             suite.runner(suite).run()
+
+def main():
+    config.initialize_config()
+    log.Log.set_verbosity(config.config.verbose + log.Info)
+
+    # 'do' the given command.
+    globals()['do'+config.config.command]()

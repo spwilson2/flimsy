@@ -30,6 +30,7 @@ def find_caller():
     file name, line number and function name.
     
     .. note:  
+        From the cpython 2.7 source
         Copyright (C) 2001-2014 Vinay Sajip. All Rights Reserved.
     '''
     f = currentframe()
@@ -109,6 +110,9 @@ class Handler(object):
     
     def posthandle(self):
         pass
+    
+    def set_verbosity(self, verbosity):
+        pass
 
 class _Log(object):
     def __init__(self):
@@ -143,14 +147,26 @@ class _Log(object):
 
     def message(self, message, level=Debug, caller=None):
         self._log(LibraryMessage(message, level, caller=caller))
+    
+    def set_verbosity(self, verbosity):
+        map(lambda handler:handler.set_verbosity(verbosity), self.handlers)
 
 
 class TerminalHandler(Handler):
+    def __init__(self):
+        self.verbosity = Info
+        
     def handle(self, record):
+        if hasattr(record, 'level'):
+            if record.level >= self.verbosity:
+                return
         if isinstance(record, TestMessage):
             print record.message, record.caller
         elif hasattr(record, 'message'):
             print record.message
+    
+    def set_verbosity(self, verbosity):
+        self.verbosity = verbosity
 
 
 class MultiprocessingHandler(Handler):
@@ -173,12 +189,16 @@ class MultiprocessingHandler(Handler):
                 self.format(item)
             except (KeyboardInterrupt, SystemExit):
                 raise
+            except EOFError:
+                return
     
     def send(self, record):
         self.queue.put(record)
 
     def handle(self, record):
         self.send(record)
+    def set_verbosity(self, verbosity):
+        self.formatter.set_verbosity(verbosity)
 
 _log = _Log()
 #TODO Singleton?
