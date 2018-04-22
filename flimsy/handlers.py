@@ -81,6 +81,60 @@ class ResultHandler(log.Handler):
         pass
 
 
+class SummaryHandler(log.Handler):
+    color = terminal.get_termcap()
+    reset = color.Normal
+    colormap = {
+            test.State.Failed: color.Red,
+            test.State.Passed: color.Green,
+            test.State.Skipped: color.Cyan,
+    }
+    sep_fmtkey = 'separator'
+    sep_fmtstr = '{%s}' % sep_fmtkey
+
+    def __init__(self):
+        self.mapping = {
+            log.TestResult: self.handle_testresult,
+        }
+        self.results = []
+
+    def handle_testresult(self, record):
+        if record.result != test.State.InProgress:
+            self.results.append(record)
+
+    def handle(self, record):
+        self.mapping.get(type(record), lambda _:None)(record)
+
+    def close(self):
+        print(self._display_summary())
+
+    def _display_summary(self):
+        most_severe_outcome = None
+        outcome_fmt = ' {count} {outcome}'
+        strings = []
+
+        outcome_count = [0] * len(test.State.enums)
+        for result in self.results:
+            outcome_count[result.result] += 1
+
+        # Iterate over enums so they are in order of severity
+        for outcome in test.State.enums:
+            outcome = getattr(test.State, outcome)
+            count  = outcome_count[outcome]
+            if count:
+                strings.append(outcome_fmt.format(count=count,
+                                                  outcome=test.State.enums[outcome]))
+                most_severe_outcome = outcome
+        string = ','.join(strings)
+        if most_severe_outcome is None:
+            string = ' No testing done'
+            most_severe_outcome = test.State.Passed
+        #string += ' in {time:.2} seconds '.format(time=self.timer.runtime())
+        string += ' '
+        return terminal.insert_separator(
+                string,
+                color=self.colormap[most_severe_outcome] + self.color.Bold)
+
 class TerminalHandler(log.Handler):
     def __init__(self, stream, verbosity=log.Info):
         self.stream = stream
@@ -94,10 +148,10 @@ class TerminalHandler(log.Handler):
         }
     
     def handle_testresult(self, record):
-        if record.result == test.InProgress:
+        if record.result == test.State.InProgress:
             print('Running %s...' % record.test.name)
         else:
-            print('%s - %s' % (record.test.name, record.result))
+            print('%s - %s' % (record.test.name, test.State.enums[record.result]))
             print(terminal.separator('-'))
 
     
@@ -165,6 +219,6 @@ class MultiprocessingHandlerWrapper(log.Handler):
             handler.set_verbosity(verbosity)
     
     def close(self):
-        for handler in self.subhandlers: handler.close()
         self._shutdown.set()
         self.thread.join()
+        for handler in self.subhandlers: handler.close()

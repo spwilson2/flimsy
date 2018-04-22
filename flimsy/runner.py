@@ -44,14 +44,14 @@ class TestRunner(object):
         try:
             sandbox.Sandbox(self.test, TestParameters(self.test))
         except sandbox.SubprocessException as e:
-            self.test.status = test_mod.Failed
+            self.test.status = test_mod.State.Failed
         else:
-            self.test.status = test_mod.Passed
+            self.test.status = test_mod.State.Passed
 
     def pretest(self):
         for fixture in self.test.fixtures:
             fixture.setup(self.test)
-        log.Log.result(self.test, test_mod.InProgress)
+        log.Log.result(self.test, test_mod.State.InProgress)
 
     def posttest(self):
         log.Log.result(self.test, self.test.status)

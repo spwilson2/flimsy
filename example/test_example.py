@@ -114,12 +114,12 @@ class IterativeRunner(flimsy.SuiteRunner):
         test_iter = iter(self.suite)
         for test in test_iter:
             result = test.runner(test).run()
-            if result == flimsy.Failed:
+            if result == flimsy.State.Failed:
                 print 'Test "%s" failed, skipping remaining tests in suite' % test.name
                 # TODO Define logging interface to report this.
                 break
         for test in test_iter:
-            test.result = flimsy.Failed
+            test.result = flimsy.State.Failed
         self.postsuite()
 
 class FailFastSuite(flimsy.TestSuite):

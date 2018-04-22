@@ -2,8 +2,18 @@ import functools
 import runner as runner_mod
 import uid
 
-# TODO: Enum of test states
-NotRun, Passed, Failed, Skipped, InProgress = range(5)
+class State():
+    enums = '''
+    NotRun
+    Passed
+    Failed
+    Skipped
+    InProgress
+    '''.split()
+
+    for idx, enum in enumerate(enums):
+        locals()[enum] = idx
+
 instances = []
 
 class TestCase(object):
@@ -20,7 +30,7 @@ class TestCase(object):
         if name is not None:
             self.name = name
         self.init(*args, **kwargs)
-        self.status = NotRun
+        self.status = State.NotRun
         self.path = __file__
         self.uid = uid.uid(self)
     
