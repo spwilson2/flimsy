@@ -2,12 +2,13 @@ from __future__ import print_function
 
 import multiprocessing
 import os
+import pickle
 import Queue
 import sys
 import threading
 import time
 
-import config
+from config import config
 import helper
 import log
 import terminal
@@ -20,12 +21,16 @@ def test_results_output_path(test_case):
     Return the path which results for a specific test case should be
     stored.
     '''
-    return os.path.join(config.config.result_path, test_case.uid.replace('/','-'))
+    return os.path.join(config.result_path, test_case.uid.replace('/','-'))
 
 class TestResult(object):
     def __init__(self, test):
         self.test = test
         helper.mkdir_p(test_results_output_path(self.test))
+
+        self.stdout_fname = os.path.join(test_results_output_path(self.test), 'stdout')
+        self.stderr_fname = os.path.join(test_results_output_path(self.test), 'stderr')
+
         self.stdout = open(self.stdout_fname, 'w')
         self.stderr = open(self.stderr_fname, 'w')
     
@@ -43,18 +48,17 @@ class TestResult(object):
     def result(self, value):
         self._result = value
 
-    @property
-    def stdout_fname(self):
-        return os.path.join(test_results_output_path(self.test), 'stdout')
-    
-    @property
-    def stderr_fname(self):
-        return os.path.join(test_results_output_path(self.test), 'stderr')
+class SavedResults():
+    def __init__(self, results):
+        self.results = results
+
 
 class ResultHandler(log.Handler):
     def __init__(self):
-        self.results = {}
+        self.testresults = {}
+        self.suiteresults = []
         self.mapping = {
+            log.SuiteResult: self.handle_suiteresult,
             log.TestResult: self.handle_testresult,
             log.TestStderr: self.handle_stderr,
             log.TestStdout: self.handle_stdout,
@@ -63,22 +67,30 @@ class ResultHandler(log.Handler):
     def handle(self, record):
         self.mapping.get(type(record), lambda _:None)(record)
 
+    def handle_suiteresult(self, record):
+        if record.result != test.State.InProgress:
+            self.suiteresults.append(record)
+
     def handle_stderr(self, record):
-        self.results[record.test.uid].write_stderr(record.message)
+        self.testresults[record.test.uid].write_stderr(record.message)
 
     def handle_stdout(self, record):
-        self.results[record.test.uid].write_stdout(record.message)
+        self.testresults[record.test.uid].write_stdout(record.message)
 
     def handle_testresult(self, record):
-        if record.result == test.InProgress:
+        if record.result == test.State.InProgress:
             # Create a new test result object for the test which is now in progress.
-            self.results[record.test.uid] = TestResult(record.test)
+            self.testresults[record.test.uid] = TestResult(record.test)
         else:
             # Update the given test's status
-            self.results[record.test.uid].result = record.result
+            self.testresults[record.test.uid].result = record.result
+    
+    def _save_results(self):
+        with open(config.previous_result_path, 'w') as f:
+            pickle.dump(SavedResults(self.suiteresults), f, config.constants.pickle_protocol)
 
     def close(self):
-        pass
+        self._save_results()
 
 
 class SummaryHandler(log.Handler):

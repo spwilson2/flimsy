@@ -74,8 +74,8 @@ def initialize_log(config):
         verbosity=config.verbose+log.Level.Info
     )
     summary_handler = handlers.SummaryHandler()
-    
-    Log.add_handler(handlers.MultiprocessingHandlerWrapper(term_handler, summary_handler))
+    result_handler = handlers.ResultHandler()
+    Log.add_handler(handlers.MultiprocessingHandlerWrapper(term_handler, result_handler, summary_handler))
 
 def main():
     config.initialize_config()

@@ -195,4 +195,4 @@ class _Log(object):
         for handler in self.handlers:
             handler.close()
 
-Log = None
+Log = _Log()

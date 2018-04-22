@@ -174,6 +174,7 @@ def define_defaults(defaults):
                                                       os.pardir,
                                                       os.pardir))
     defaults.result_path = os.path.join(os.getcwd(), 'testing-results')
+    defaults.previous_result_path = os.path.join(defaults.result_path, 'previous-results.pickle')
 
 def define_constants(constants):
     '''
