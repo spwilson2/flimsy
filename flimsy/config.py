@@ -173,7 +173,7 @@ def define_defaults(defaults):
     defaults.base_dir = os.path.abspath(os.path.join(absdirpath(__file__),
                                                       os.pardir,
                                                       os.pardir))
-    defaults.result_path = os.path.join(os.getcwd(), '.testing-results')
+    defaults.result_path = os.path.join(os.getcwd(), 'testing-results')
 
 def define_constants(constants):
     '''

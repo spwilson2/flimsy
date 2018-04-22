@@ -47,14 +47,14 @@ class TestRunner(object):
             self.test.status = test_mod.Failed
         else:
             self.test.status = test_mod.Passed
-        log.Log.result(self.test, self.test.status)
 
     def pretest(self):
         for fixture in self.test.fixtures:
             fixture.setup(self.test)
-        log.Log.message('\tRunning Test: %s' % self.test.name)
+        log.Log.result(self.test, test_mod.InProgress)
 
     def posttest(self):
+        log.Log.result(self.test, self.test.status)
         for fixture in self.test.fixtures:
             fixture.teardown(self.test)
 
@@ -69,9 +69,9 @@ class SuiteRunner(object):
         self.postsuite()
 
     def presuite(self):
+        # TODO Add logging for suites.
         for fixture in self.suite.fixtures:
             fixture.setup(self.suite)
-        log.Log.message('Running Suite: %s' % self.suite.name)
 
     def postsuite(self):
         for fixture in self.suite.fixtures:

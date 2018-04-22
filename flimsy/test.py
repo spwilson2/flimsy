@@ -1,8 +1,9 @@
 import functools
 import runner as runner_mod
+import uid
 
 # TODO: Enum of test states
-NotRun, Passed, Failed, Skipped = range(4)
+NotRun, Passed, Failed, Skipped, InProgress = range(5)
 instances = []
 
 class TestCase(object):
@@ -20,6 +21,8 @@ class TestCase(object):
             self.name = name
         self.init(*args, **kwargs)
         self.status = NotRun
+        self.path = __file__
+        self.uid = uid.uid(self)
     
     def init(self):
         pass

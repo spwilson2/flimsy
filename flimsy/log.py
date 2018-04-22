@@ -2,6 +2,9 @@ from __future__ import print_function
 import os 
 import sys
 import time
+import test
+import terminal
+import Queue
 
 import threading
 import multiprocessing
@@ -62,11 +65,18 @@ class Message(object):
         self.message = message
         self.level = level
 
+
+class TestWrapper(object):
+    def __init__(self, test):
+        self.name = test.name
+        self.uid = test.uid
+        self.path = test.path
+
+
 class TestLogItem(Record):
     def __init__(self, test, caller):
         super(TestLogItem, self).__init__(caller)
-        # TODO, we can't pickle the test but should use something unique to identify the test.
-        self.testname = test.name
+        self.test = TestWrapper(test)
 
 
 class TestStdout(TestLogItem):
@@ -151,74 +161,9 @@ class _Log(object):
     
     def set_verbosity(self, verbosity):
         map(lambda handler:handler.set_verbosity(verbosity), self.handlers)
-
-
-class TerminalHandler(Handler):
-    def __init__(self, stream, verbosity=Info):
-        self.stream = stream
-        self.verbosity = verbosity
-        
-    def handle(self, record):
-        if hasattr(record, 'level'):
-            if record.level > self.verbosity:
-                return
-        if isinstance(record, TestMessage):
-            print(record.message, record.caller)
-
-        if self.stream:
-            if type(record) is TestStderr:
-                print(record.message, file=sys.stderr)
-            elif type(record) is TestStdout:
-                print(record.message, file=sys.stdout)
-        
-        if isinstance(record, LibraryMessage):
-            print(record.message)
     
-    def set_verbosity(self, verbosity):
-        self.verbosity = verbosity
-
-
-class MultiprocessingHandler(Handler):
-    def __init__(self, formatter):
-        # Create thread to spin handing recipt of messages
-        # Create queue to push onto
-        self.queue = multiprocessing.Queue()
-        self.thread = threading.Thread(target=self.receive)
-        self.thread.daemon = True
-        self.thread.start()
-        self.formatter = formatter
-
-    def format(self, record):
-        self.formatter.handle(record)
-
-    def receive(self):
-        while True:
-            try:
-                item = self.queue.get()
-                self.format(item)
-            except (KeyboardInterrupt, SystemExit):
-                raise
-            except EOFError:
-                return
-    
-    def send(self, record):
-        self.queue.put(record)
-
-    def handle(self, record):
-        self.send(record)
-
-    def set_verbosity(self, verbosity):
-        self.formatter.set_verbosity(verbosity)
+    def close(self):
+        for handler in self.handlers:
+            handler.close()
 
 Log = None
-
-def initialize_log(config):
-    global Log
-    Log = _Log()
-
-    term_handler = TerminalHandler(
-        stream=config.stream,
-        verbosity=config.verbose+Info
-    )
-    
-    Log.add_handler(MultiprocessingHandler(term_handler))

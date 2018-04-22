@@ -4,6 +4,7 @@ import config
 import loader as loader_mod
 import fixture as fixture_mod
 import log
+import handlers
 
 # Test Phases:
 # * Test Collection
@@ -66,9 +67,21 @@ def dorun():
         for suite in test_schedule:
             suite.runner(suite).run()
 
+
+def initialize_log(config):
+    Log = log.Log = log._Log()
+
+    term_handler = handlers.TerminalHandler(
+        stream=config.stream,
+        verbosity=config.verbose+log.Info
+    )
+    
+    Log.add_handler(handlers.MultiprocessingHandlerWrapper(term_handler))
+
 def main():
     config.initialize_config()
-    log.initialize_log(config.config)
+    initialize_log(config.config)
 
     # 'do' the given command.
     globals()['do'+config.config.command]()
+    log.Log.close()

@@ -69,10 +69,10 @@ class IoManager(object):
 
     def log_ouput(self):
         def _log_output(pipe, log):
-            pipe = os.fdopen(pipe, 'r')
-            # Read iteractively, don't allow input to fill the pipe.
-            for line in iter(pipe.readline, ''):
-                log(line.rstrip())
+            with os.fdopen(pipe, 'r') as pipe:
+                # Read iteractively, don't allow input to fill the pipe.
+                for line in iter(pipe.readline, ''):
+                    log(line)
 
         # Don't keep a backpointer to self in the thread.            
         log = self.log
