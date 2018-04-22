@@ -34,6 +34,10 @@ class TestApplication(TestCase):
     def init(self, filename):
         # TODO Save current file being loaded path in order to properly resolve the filename path.
         self.filename = filename
+    
+    def test(self, test_parameters):
+        #TODO
+        pass
 
 def test_application(name, filename):
     return TestApplication(filename, name=name)

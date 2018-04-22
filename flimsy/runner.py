@@ -1,5 +1,9 @@
 import test as test_mod
 
+import sandbox
+# TODO Create process wrapper for collecting exceptions/status
+
+
 class TestRunner(object):
     def __init__(self, test):
         self.test = test
@@ -9,17 +13,15 @@ class TestRunner(object):
         self.sandbox_test()
         self.posttest()
 
-        return self.test.result
+        return self.test.status
     
     def sandbox_test(self):
         try:
-            # TODO Sandbox the test
-            # TODO Store the test results
-            self.test.test()
-        except:
-            self.test.result = test_mod.Failed
+            sandbox.Sandbox(self.test.test, args=(None,))
+        except sandbox.SubprocessException:
+            self.test.status = test_mod.Failed
         else:
-            self.test.result = test_mod.Passed
+            self.test.status = test_mod.Passed
 
     def pretest(self):
         for fixture in self.test.fixtures:
