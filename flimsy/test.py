@@ -5,10 +5,10 @@ import uid
 class State():
     enums = '''
     NotRun
+    InProgress
+    Skipped
     Passed
     Failed
-    Skipped
-    InProgress
     '''.split()
 
     for idx, enum in enumerate(enums):

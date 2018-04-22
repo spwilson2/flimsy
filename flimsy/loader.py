@@ -6,6 +6,7 @@ import traceback
 import six
 
 import config
+import log
 import suite as suite_mod
 import test as test_mod
 import fixture as fixture_mod
@@ -110,8 +111,10 @@ class Loader(object):
             execfile(path, newdict, newdict)
             #six.exec_(open(path).read(), newdict, newdict)
         except Exception as e:
-            print traceback.format_exc()
-            #TODO Log error.
+            log.Log.message('Exception thrown while loading "%s"\n\n'
+                            '%s' % (path, traceback.format_exc()),
+                            log.Level.Warn)
+            #TODO Sandbox loading.
             cleanup()
             return
     

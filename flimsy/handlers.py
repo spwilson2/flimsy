@@ -136,6 +136,13 @@ class SummaryHandler(log.Handler):
                 color=self.colormap[most_severe_outcome] + self.color.Bold)
 
 class TerminalHandler(log.Handler):
+    color = terminal.get_termcap()
+    verbosity_mapping = {
+        log.Level.Warn: color.Yellow,
+        log.Level.Error: color.Red,
+    }
+    default = color.Normal
+
     def __init__(self, stream, verbosity=log.Level.Info):
         self.stream = stream
         self.verbosity = verbosity
@@ -147,12 +154,25 @@ class TerminalHandler(log.Handler):
             log.TestMessage: self.handle_testmessage,
             log.LibraryMessage: self.handle_librarymessage,
         }
+
+    def _display_outcome(self, name, outcome, reason=None):
+        print(SummaryHandler.colormap[outcome]
+                 + name
+                 + ' '
+                 + test.State.enums[outcome]
+                 + SummaryHandler.reset)
+
+        if reason is not None:
+            log.info('')
+            log.info('Reason:')
+            log.info(reason)
+            log.info(terminal.separator('-'))
     
     def handle_testresult(self, record):
         if record.result == test.State.InProgress:
             print('Running %s...' % record.test.name)
         else:
-            print('%s - %s' % (record.test.name, test.State.enums[record.result]))
+            self._display_outcome(record.test.name, record.result)
 
     def handle_suiteresult(self, record):
         if record.result == test.State.InProgress:
@@ -167,10 +187,15 @@ class TerminalHandler(log.Handler):
         if self.stream: print(record.message, file=sys.stdout, end='')
     
     def handle_testmessage(self, record):
-        if self.stream: print(record.message, record.caller)
+        if self.stream: 
+            print(self._colorize(record.message + str(record.caller), record.level))
 
     def handle_librarymessage(self, record):
-        print(record.message)
+        print(self._colorize(record.message, record.level))
+
+    def _colorize(self, message, level):
+        return self.verbosity_mapping.get(level, self.default) + \
+                message + self.default
 
     def handle(self, record):
         if hasattr(record, 'level'):

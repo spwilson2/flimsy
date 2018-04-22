@@ -115,11 +115,15 @@ class IterativeRunner(flimsy.SuiteRunner):
         for test in test_iter:
             result = test.runner(test).run()
             if result == flimsy.State.Failed:
-                print 'Test "%s" failed, skipping remaining tests in suite' % test.name
-                # TODO Define logging interface to report this.
+                flimsy.log.Log.message(
+                    'Test "%s" failed, skipping' 
+                    ' remaining tests in suite' % test.name)
                 break
         for test in test_iter:
-            test.result = flimsy.State.Failed
+            # TODO Simplify this interface? Idk this is pretty deep into the library,
+            # it's probably not likely for users to modify behavior at this level. 
+            test.result = flimsy.State.Skipped
+            flimsy.log.Log.testresult(test, test.result)
         self.postsuite()
 
 class FailFastSuite(flimsy.TestSuite):
@@ -150,3 +154,40 @@ def debug_message_test(test_parameters):
 # Increasing the verbosity level however will not cause test stdout or stderr output to display.
 # To enable output of test stdout and stderr, supply the '-s' flag.
 # Now all terminal output will be directed to their respective streams as tests are executed.
+
+
+# #################
+# # Configuration
+# #################
+# flimsy.config.defaultsuite
+# flimsy.config.defaultsuiterunner
+# flimsy.config.defaulttestrunner
+
+# flimsy.config.defaultpathfilter
+
+# # In order to collect tests items, flimsy executes the python files containing tests.
+# # To prevent accidental running of unrelated scripts, by default flimsy will first check files for a top level import statement from flimsy.
+# flimsy.config.checkforimport
+
+# ###############
+# # Other
+# ###############
+
+# # Perform special logic if this module is not being collected by whimsy.
+# # NOTE: Only tests which are instantiated in the collecting module will be collected on this pass.
+# if not flimsy.collecting == __name__:
+#     six.print_('This module is not currently being collected, but it was imported.')
+
+# # Test Phases:
+# # * Test Collection
+# # * Test Parameterization
+# # * Fixture Parameterization
+# # * Global Fixture Setup
+# # * Iteratevely run suites:
+# #    * Suite Fixture Setup
+# #    * Iteratively run tests:
+# #       * Test Fixture Setup
+# #       * Run Test
+# #       * Test Fixture Teardown
+# #    * Suite Fixture Teardown
+# # * Global Fixture Teardown
