@@ -61,8 +61,6 @@ def dorun():
         print 'Skipping all tests.'
         print e.msg
     else:
-
-        print 'Running tests'
         # Run all suites.
         for suite in test_schedule:
             suite.runner(suite).run()
@@ -73,7 +71,7 @@ def initialize_log(config):
 
     term_handler = handlers.TerminalHandler(
         stream=config.stream,
-        verbosity=config.verbose+log.Info
+        verbosity=config.verbose+log.Level.Info
     )
     summary_handler = handlers.SummaryHandler()
     

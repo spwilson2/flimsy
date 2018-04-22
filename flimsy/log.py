@@ -9,8 +9,17 @@ import Queue
 import threading
 import multiprocessing
 
-# TODO: Enum of log levels
-Error, Warn, Info, Debug, Trace  = range(5)
+class Level():
+    enums = '''
+    Error 
+    Warn 
+    Info 
+    Debug 
+    Trace
+    '''.split()
+
+    for idx, enum in enumerate(enums):
+        locals()[enum] = idx
 
 # next bit filched from 1.5.2's inspect.py
 def currentframe():
@@ -66,6 +75,7 @@ class Message(object):
         self.level = level
 
 
+
 class TestWrapper(object):
     def __init__(self, test):
         self.name = test.name
@@ -77,6 +87,21 @@ class TestLogItem(Record):
     def __init__(self, test, caller):
         super(TestLogItem, self).__init__(caller)
         self.test = TestWrapper(test)
+
+
+class SuiteWrapper(object):
+    def __init__(self, suite):
+        self.name = suite.name
+        self.tests = [TestWrapper(test) for test in suite.tests]
+        self.uid = suite.uid
+        self.path = suite.path
+
+
+class SuiteResult(Record):
+    def __init__(self, suite, result):
+        Record.__init__(self, caller=None)
+        self.suite = SuiteWrapper(suite)
+        self.result = result
 
 
 class TestStdout(TestLogItem):
@@ -93,6 +118,7 @@ class TestResult(TestLogItem):
     def __init__(self, test, result):
         TestLogItem.__init__(self, test, caller=None)
         self.result = result
+        
 
 class LibraryMessage(Message, Record):
     def __init__(self, message, level, caller=None):
@@ -153,10 +179,13 @@ class _Log(object):
     def testmessage(self, test, message, level, caller):
         self._log(TestMessage(test, message, level, caller))
 
-    def result(self, test, result):
+    def testresult(self, test, result):
         self._log(TestResult(test, result))
 
-    def message(self, message, level=Info, caller=None):
+    def suiteresult(self, test, result):
+        self._log(SuiteResult(test, result))
+
+    def message(self, message, level=Level.Info, caller=None):
         self._log(LibraryMessage(message, level, caller=caller))
     
     def set_verbosity(self, verbosity):

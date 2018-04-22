@@ -9,12 +9,12 @@ class LogWrapper(object):
         self.__log = log.Log
 
     def debug(self, message):
-        self._log(message, level=log.Debug)
+        self._log(message, level=log.Level.Debug)
     
     def warn(self, message):
-        self._log(message, level=log.Warn)
+        self._log(message, level=log.Level.Warn)
 
-    def log(self, message, level=log.Info):
+    def log(self, message, level=log.Level.Info):
         self._log(message, level)
 
     def _log(self, message, level):
@@ -51,10 +51,10 @@ class TestRunner(object):
     def pretest(self):
         for fixture in self.test.fixtures:
             fixture.setup(self.test)
-        log.Log.result(self.test, test_mod.State.InProgress)
+        log.Log.testresult(self.test, test_mod.State.InProgress)
 
     def posttest(self):
-        log.Log.result(self.test, self.test.status)
+        log.Log.testresult(self.test, self.test.status)
         for fixture in self.test.fixtures:
             fixture.teardown(self.test)
 
@@ -68,24 +68,34 @@ class SuiteRunner(object):
             test.runner(test).run()
         self.postsuite()
 
+    def set_result(self):
+        '''        
+        Status of the test suite by default is:
+        * Passed if all contained tests passed
+        * Failed if any contained tests failed
+        * Skipped if all contained tests were skipped
+        * NotRun if all contained tests have not run
+        * Unknown if there is one or more tests NotRun and one or more are marked  either Passed or Skipped
+        '''
+        passed = False
+        for test in self.suite.tests:
+            if test.status == test_mod.State.Failed:
+                self.suite.status = test.status
+                return
+            passed |= test.status == test_mod.State.Passed
+        if passed:
+            self.suite.status = test_mod.State.Passed
+        else:
+            self.suite.status = test_mod.State.Skipped
+        
     def presuite(self):
         # TODO Add logging for suites.
         for fixture in self.suite.fixtures:
             fixture.setup(self.suite)
+        log.Log.suiteresult(self.suite, test_mod.State.InProgress)
 
     def postsuite(self):
+        self.set_result()
+        log.Log.suiteresult(self.suite, self.suite.status)
         for fixture in self.suite.fixtures:
             fixture.teardown(self.suite)
-    
-    # Custom running interface?
-    # Information need to know to implement failfast:
-    # - This test suite
-    # - Previous test result
-    # - Next test
-    # Needs to provide:
-    # - Next test to run instead? 
-    #   No, can just mark each test as failed until next test is ok.
-    #   Instead needs to be able to mark a test state without actually executing test code.
-
-    # Information need to know to implement partial failfast:
-    # (Skipping should only be )

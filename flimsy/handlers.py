@@ -136,10 +136,11 @@ class SummaryHandler(log.Handler):
                 color=self.colormap[most_severe_outcome] + self.color.Bold)
 
 class TerminalHandler(log.Handler):
-    def __init__(self, stream, verbosity=log.Info):
+    def __init__(self, stream, verbosity=log.Level.Info):
         self.stream = stream
         self.verbosity = verbosity
         self.mapping = {
+            log.SuiteResult: self.handle_suiteresult,
             log.TestResult: self.handle_testresult,
             log.TestStderr: self.handle_stderr,
             log.TestStdout: self.handle_stdout,
@@ -152,8 +153,12 @@ class TerminalHandler(log.Handler):
             print('Running %s...' % record.test.name)
         else:
             print('%s - %s' % (record.test.name, test.State.enums[record.result]))
-            print(terminal.separator('-'))
 
+    def handle_suiteresult(self, record):
+        if record.result == test.State.InProgress:
+            print('Running %s Test Suite...' % record.suite.name)
+        else:
+            print(terminal.separator('-'))
     
     def handle_stderr(self, record):
         if self.stream: print(record.message, file=sys.stderr, end='')
