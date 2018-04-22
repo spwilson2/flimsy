@@ -2,6 +2,9 @@ import os
 import sys
 import time
 
+import threading
+import multiprocessing
+
 # TODO: Enum of log levels
 Error, Warn, Info, Debug, Trace  = range(5)
 
@@ -60,7 +63,8 @@ class Message(object):
 class TestLogItem(Record):
     def __init__(self, test, caller):
         super(TestLogItem, self).__init__(caller)
-        self.test = test
+        # TODO, we can't pickle the test but should use something unique to identify the test.
+        self.testname = test.name
 
 
 class TestStdout(TestLogItem):
@@ -148,7 +152,35 @@ class TerminalHandler(Handler):
         elif hasattr(record, 'message'):
             print record.message
 
+
+class MultiprocessingHandler(Handler):
+    def __init__(self, formatter):
+        # Create thread to spin handing recipt of messages
+        # Create queue to push onto
+        self.queue = multiprocessing.Queue()
+        self.thread = threading.Thread(target=self.receive)
+        self.thread.daemon = True
+        self.thread.start()
+        self.formatter = formatter
+
+    def format(self, record):
+        self.formatter.handle(record)
+
+    def receive(self):
+        while True:
+            try:
+                item = self.queue.get()
+                self.format(item)
+            except (KeyboardInterrupt, SystemExit):
+                raise
+    
+    def send(self, record):
+        self.queue.put(record)
+
+    def handle(self, record):
+        self.send(record)
+
 _log = _Log()
 #TODO Singleton?
 Log = _log
-Log.add_handler(TerminalHandler())
+Log.add_handler(MultiprocessingHandler(TerminalHandler()))
