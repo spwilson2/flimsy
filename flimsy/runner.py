@@ -71,7 +71,7 @@ class SuiteRunner(object):
     def presuite(self):
         for fixture in self.suite.fixtures:
             fixture.setup(self.suite)
-        log.Log.message('Running Suite: %s' % self.suite.name, log.Trace)
+        log.Log.message('Running Suite: %s' % self.suite.name)
 
     def postsuite(self):
         for fixture in self.suite.fixtures:

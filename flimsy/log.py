@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os 
 import sys
 import time
@@ -145,7 +146,7 @@ class _Log(object):
     def result(self, test, result):
         self._log(TestResult(test, result))
 
-    def message(self, message, level=Debug, caller=None):
+    def message(self, message, level=Info, caller=None):
         self._log(LibraryMessage(message, level, caller=caller))
     
     def set_verbosity(self, verbosity):
@@ -153,17 +154,25 @@ class _Log(object):
 
 
 class TerminalHandler(Handler):
-    def __init__(self):
-        self.verbosity = Info
+    def __init__(self, stream, verbosity=Info):
+        self.stream = stream
+        self.verbosity = verbosity
         
     def handle(self, record):
         if hasattr(record, 'level'):
-            if record.level >= self.verbosity:
+            if record.level > self.verbosity:
                 return
         if isinstance(record, TestMessage):
-            print record.message, record.caller
-        elif hasattr(record, 'message'):
-            print record.message
+            print(record.message, record.caller)
+
+        if self.stream:
+            if type(record) is TestStderr:
+                print(record.message, file=sys.stderr)
+            elif type(record) is TestStdout:
+                print(record.message, file=sys.stdout)
+        
+        if isinstance(record, LibraryMessage):
+            print(record.message)
     
     def set_verbosity(self, verbosity):
         self.verbosity = verbosity
@@ -197,10 +206,19 @@ class MultiprocessingHandler(Handler):
 
     def handle(self, record):
         self.send(record)
+
     def set_verbosity(self, verbosity):
         self.formatter.set_verbosity(verbosity)
 
-_log = _Log()
-#TODO Singleton?
-Log = _log
-Log.add_handler(MultiprocessingHandler(TerminalHandler()))
+Log = None
+
+def initialize_log(config):
+    global Log
+    Log = _Log()
+
+    term_handler = TerminalHandler(
+        stream=config.stream,
+        verbosity=config.verbose+Info
+    )
+    
+    Log.add_handler(MultiprocessingHandler(term_handler))

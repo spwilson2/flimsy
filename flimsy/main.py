@@ -68,7 +68,7 @@ def dorun():
 
 def main():
     config.initialize_config()
-    log.Log.set_verbosity(config.config.verbose + log.Info)
+    log.initialize_log(config.config)
 
     # 'do' the given command.
     globals()['do'+config.config.command]()

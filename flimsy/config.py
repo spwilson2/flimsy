@@ -286,11 +286,12 @@ def define_common_args(config):
         #     action='append',
         #     default=[],
         #     help=None),
-        # Argument(
-        #     '--uid',
-        #     action='store',
-        #     default=None,
-        #     help='UID of a specific test item to run.'),
+        Argument(
+            '-s',
+            '--stream',
+            action='store_true',
+            default=False,
+            help='Stream the output from stdout and stderr as tests run.'),
         Argument(
             '-v',
             action='count',
@@ -348,6 +349,7 @@ class RunParser(ArgParser):
         super(RunParser, self).__init__(parser)
 
         common_args.directory.add_to(parser)
+        common_args.stream.add_to(parser)
 
 config = _Config()
 define_constants(config.constants)
