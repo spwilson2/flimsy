@@ -119,6 +119,30 @@ class FailFastSuite(flimsy.TestSuite):
 
 
 #################
+# Logging
+#################
+
+# Flimsy uses a single common log to offer a single point of contact for gathering test status, output, and debug messages.
+# This log is thread safe and allows for multiple consumers of information.
+
+# As a convenience, the test_parameters object contains a log accessor to log messages at a given level and automatically attach the test scope.
+# To write a debug message to the log during a test::
+@flimsy.testfunction
+def debug_message_test(test_parameters):
+    test_parameters.log.debug('This is a debug message')
+    test_parameters.log.warn('This is a warning message')
+
+# The log will also automatically capture print statements, so we could just have easily used the print function.
+# However, print statements are considered Stdout rather than a LogMessage type.
+# This distiction makes more sense once we introduce the verbosity and stream flags.
+# To increase log message output verbosity supply the '-v' flag.
+# Each additional flag will increase the verbosity level to a cap.
+# Increasing the verbosity level however will not cause test stdout or stderr output to display.
+# To enable output of test stdout and stderr, supply the '-s' flag.
+# Now all terminal output will be directed to their respective streams as tests are executed.
+
+
+#################
 # Configuration
 #################
 flimsy.config.defaultsuite
