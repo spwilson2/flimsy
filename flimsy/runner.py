@@ -42,7 +42,7 @@ class TestRunner(object):
     
     def sandbox_test(self):
         try:
-            sandbox.Sandbox(self.test.test, args=(TestParameters(self.test),))
+            sandbox.Sandbox(self.test, TestParameters(self.test))
         except sandbox.SubprocessException as e:
             self.test.status = test_mod.Failed
         else:

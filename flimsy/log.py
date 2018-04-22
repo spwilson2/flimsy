@@ -70,12 +70,12 @@ class TestLogItem(Record):
 
 class TestStdout(TestLogItem):
     def __init__(self, test, message):
-        TestLogItem.__init__(self, test)
+        TestLogItem.__init__(self, test, None)
         self.message = message
 
         
-class TestStderr(TestLogItem):
-    __init__ = TestStdout.__init__
+class TestStderr(TestStdout):
+    pass
 
 
 class TestResult(TestLogItem):

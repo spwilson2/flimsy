@@ -1,5 +1,7 @@
 import flimsy
 import six
+
+import pdb
 #################
 # Test Cases
 #################
@@ -26,6 +28,7 @@ true_test = Test(True, name='TestPassCustom')
 # Create tests from a function, name of the function is automatically used as test name.
 @flimsy.testfunction
 def test_function(test_parameters):
+    print 'In test function'
     pass
 
 # Create tests using non-python related applications and checking return value.

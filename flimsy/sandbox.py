@@ -1,6 +1,97 @@
 import multiprocessing
-import traceback
+import pdb
+import os
 import sys
+import threading
+import traceback
+
+import log
+
+pdb._Pdb = pdb.Pdb
+class ForkedPdb(pdb._Pdb):
+    '''
+    A Pdb subclass that may be used from a forked multiprocessing child
+    '''
+    io_manager = None
+    def interaction(self, *args, **kwargs):
+        _stdin = sys.stdin
+        self.io_manager.restore_pipes()
+        try:
+            sys.stdin = open('/dev/stdin')
+            pdb._Pdb.interaction(self, *args, **kwargs)
+        finally:
+            sys.stdin = _stdin
+            self.io_manager.replace_pipes()
+
+
+class IoManager(object):
+    def __init__(self, test):
+        self.test = test
+        self.log = log.Log
+        self._init_pipes()
+    
+    def _init_pipes(self):
+        self.stdout_rp, self.stdout_wp = os.pipe()
+        self.stderr_rp, self.stderr_wp = os.pipe()
+
+    def close_parent_pipes(self):
+        os.close(self.stdout_wp)
+        os.close(self.stderr_wp)
+
+    def setup(self):
+        self.replace_pipes()
+        self.fixup_pdb()
+    
+    def fixup_pdb(self):
+        ForkedPdb.io_manager = self
+        pdb.Pdb = ForkedPdb
+
+    def replace_pipes(self):
+        self.old_stderr = os.dup(sys.stderr.fileno())
+        self.old_stdout = os.dup(sys.stdout.fileno())
+
+        os.dup2(self.stderr_wp, sys.stderr.fileno())
+        sys.stderr = os.fdopen(self.stderr_wp, 'w', 0)
+        os.dup2(self.stdout_wp, sys.stdout.fileno())
+        sys.stdout = os.fdopen(self.stdout_wp, 'w', 0)
+    
+    def restore_pipes(self):
+        self.stderr_wp = os.dup(sys.stderr.fileno())
+        self.stdout_wp = os.dup(sys.stdout.fileno())
+
+        os.dup2(self.old_stderr, sys.stderr.fileno())
+        sys.stderr = os.fdopen(self.old_stderr, 'w', 0)
+        os.dup2(self.old_stdout, sys.stdout.fileno())
+        sys.stdout = os.fdopen(self.old_stdout, 'w', 0)
+
+    def start_loggers(self):
+        self.log_ouput()
+
+    def log_ouput(self):
+        def _log_output(pipe, log):
+            pipe = os.fdopen(pipe, 'r')
+            # Read iteractively, don't allow input to fill the pipe.
+            for line in iter(pipe.readline, ''):
+                log(line.rstrip())
+
+        # Don't keep a backpointer to self in the thread.            
+        log = self.log
+        test = self.test
+
+        self.stdout_thread = threading.Thread(
+                target=_log_output,
+                args=(self.stdout_rp, lambda buf: log.stdout(test, buf))
+        )
+        self.stderr_thread = threading.Thread(
+                target=_log_output,
+                args=(self.stderr_rp, lambda buf: log.stderr(test, buf))
+        )
+        self.stdout_thread.start()
+        self.stderr_thread.start()
+    
+    def join_loggers(self):
+        self.stdout_thread.join()
+        self.stderr_thread.join()
 
 
 class SubprocessException(Exception):
@@ -30,7 +121,7 @@ class ExceptionProcess(multiprocessing.Process):
         except Exception as e:
             tb = traceback.format_exc()
             self._cconn.send((e, tb))
-            sys.exit(1)
+            raise
 
     @property
     def status(self):
@@ -41,10 +132,23 @@ class ExceptionProcess(multiprocessing.Process):
 
 
 class Sandbox(object):
-    def __init__(self, function, args=tuple(), kwargs={}):
-        self.p = ExceptionProcess(target=function, args=args, kwargs=kwargs)
+    def __init__(self, test, test_parameters):
+
+        self.test = test
+        self.params = test_parameters
+        self.io_manager = IoManager(test)
+
+        self.p = ExceptionProcess(target=self.entrypoint)
+        self.io_manager.start_loggers()
         self.p.start()
+        self.io_manager.close_parent_pipes()
         self.p.join()
+        self.io_manager.join_loggers()
+
         status = self.p.status
         if status.exitcode:
             raise SubprocessException(status.exception, status.trace)
+
+    def entrypoint(self):
+        self.io_manager.setup()
+        self.test.test(self.params)
