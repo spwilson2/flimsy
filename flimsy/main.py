@@ -27,21 +27,27 @@ class EntireTestCollection(object):
     def __iter__(self):
         return iter(self.suites)
 
-def filter_with_tags(test_collection, tags):
-    if not tags:
+def filter_with_config_tags(test_collection):
+    tags = getattr(config.config, config.StorePositionalTagsAction.position_kword)
+    return filter_with_tags(test_collection, tags)
+
+def filter_with_tags(test_collection, filters):
+    if not filters:
         return EntireTestCollection(test_collection)
 
-    # TODO Extend filter logic with --exclude-tags --include-tags with regex.
-    # They should be applied in order they were on command line:
-    # E.g. --exclude-tags .* --include-tags .* will return nothing since everything was excluded.
-
-    new_suites = []
-    for suite in test_collection:
+    def apply_tag_filter(include, regex, suite):
         for tag in suite.tags:
-            if tag in tags:
-                new_suites.append(suite)
-                break
-    return EntireTestCollection(new_suites)
+            print tag
+            if regex.search(tag):
+                return include
+        return not include
+    
+    remaining_suites = iter(test_collection)
+    for include, regex in filters:
+        remaining_suites = (suite for suite in remaining_suites 
+                            if apply_tag_filter(include, regex, suite))
+
+    return EntireTestCollection(list(remaining_suites))
 
 # TODO Add results command for listing previous results.
 # TODO Add rerun command to re-run failed tests.
@@ -57,7 +63,7 @@ def do_run():
     testloader.load_root('example')
 
     # First pass through all the suites to create the test schedule object.
-    test_schedule = filter_with_tags(testloader.suites, config.config.tags)
+    test_schedule = filter_with_config_tags(testloader.suites)
 
     # Iterate through all fixtures parameterizing them in order.
     fixtures = tuple()

@@ -206,14 +206,14 @@ def debug_message_test(test_parameters):
 #
 #
 
-# You can limit the selection of test suites run by supplying the `--tags <tag-query>` flag.
+# You can limit the selection of test suites run by supplying the `--exclude-tags|--include-tags <tag-query>` flag.
 #
 # Say you have the following test suites and you wish to only run suites tagged for the X86 architecture.
 x86_suite = flimsy.TestSuite([Test(True, name='X86Test')], name='X86 Test Suite', tags=['X86'])
-arm64_suite = flimsy.TestSuite([Test(True, name='ARM64Test')], name='X86 Test Suite', tags=['ARM64'])
+arm64_suite = flimsy.TestSuite([Test(True, name='ARM64Test')], name='ARM64 Test Suite', tags=['ARM64'])
 
 # To do so, execute the run subcommand as follows::
-# flimsy run --tags X86
+# flimsy run --include-tags X86
 #
 #
 # A note on tags: 
@@ -234,6 +234,6 @@ arm64_suite = flimsy.TestSuite([Test(True, name='ARM64Test')], name='X86 Test Su
 # Using the `x86_suite` and `arm64_suite` created above we can also try out listing test suites.
 #
 # To query available tests without running them, use the `list` subcommand with the `--tags` flag just as you would when running::
-#   flimsy list --tags X86
+#   flimsy list --include-tags X86
 #
 # This will output a list of all test suites tagged with `X86`.

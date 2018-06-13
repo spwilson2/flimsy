@@ -41,6 +41,7 @@ import abc
 import argparse
 import copy
 import os
+import re
 from pickle import HIGHEST_PROTOCOL as highest_pickle_protocol
 
 from helper import absdirpath, AttrDict, FrozenAttrDict
@@ -202,10 +203,49 @@ def define_post_processors(config):
     same format.
     '''    
     def fix_verbosity_hack(verbose):
-        return (verbose[0].val,)
+        if verbose:
+            return (verbose[0].val,)
+    
+    def compile_tag_regex(positional_tags):
+        print positional_tags
+        if not positional_tags:
+            return positional_tags
+        else:
+            new_positional_tags_list = []
+            positional_tags = positional_tags[0]
+
+            for flag, regex in positional_tags:
+                if flag == 'exclude_tags':
+                    include = False
+                elif flag  == 'include_tags':
+                    include = True
+                else:
+                    raise ValueError('Unsupported flag.')
+                regex = re.compile(regex)
+                new_positional_tags_list.append((include, regex))
+
+            return (new_positional_tags_list,)
+             
 
     config._add_post_processor('verbose', fix_verbosity_hack)
+    config._add_post_processor(StorePositionalTagsAction.position_kword, 
+                               compile_tag_regex)
 
+class StorePositionAction(argparse.Action):
+    '''Base class for classes wishing to create namespaces where 
+    arguments are stored in the order provided via the command line.
+    '''
+    position_kword = 'positional'
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        if not self.position_kword in namespace:
+            setattr(namespace, self.position_kword, [])
+        previous = getattr(namespace, self.position_kword)
+        previous.append((self.dest, values))
+        setattr(namespace, self.position_kword, previous)
+
+class StorePositionalTagsAction(StorePositionAction):
+    position_kword = 'tag_filters'
 
 class Argument(object):
     '''
@@ -243,7 +283,6 @@ class Argument(object):
     def copy(self):
         '''Copy this argument so you might modify any of its kwargs.'''
         return copy.deepcopy(self)
-
 
 class _StickyInt:
     '''
@@ -283,9 +322,12 @@ def define_common_args(config):
         #     action='store_true',
         #     help='Stop running on the first instance of failure'),
         Argument(
-            '--tags',
-            action='append',
-            default=[],
+            '--exclude-tags',
+            action=StorePositionalTagsAction,
+            help='A tag comparison used to select tests.'),
+        Argument(
+            '--include-tags',
+            action=StorePositionalTagsAction,
             help='A tag comparison used to select tests.'),
         Argument(
             '-s',
@@ -351,7 +393,8 @@ class RunParser(ArgParser):
 
         common_args.directory.add_to(parser)
         common_args.stream.add_to(parser)
-        common_args.tags.add_to(parser)
+        common_args.include_tags.add_to(parser)
+        common_args.exclude_tags.add_to(parser)
 
 class ListParser(ArgParser):
     '''
@@ -367,7 +410,8 @@ class ListParser(ArgParser):
 
         common_args.directory.add_to(parser)
         common_args.stream.add_to(parser)
-        common_args.tags.add_to(parser)
+        common_args.include_tags.add_to(parser)
+        common_args.exclude_tags.add_to(parser)
 
 config = _Config()
 define_constants(config.constants)
