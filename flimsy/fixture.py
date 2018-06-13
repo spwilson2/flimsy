@@ -39,6 +39,7 @@ class Fixture(object):
     def test_schedule(self, schedule):
         self._test_schedule = schedule
         self.__parameterize()
+        
     def skip(self, testitem):
         raise SkipException(self, testitem)
 

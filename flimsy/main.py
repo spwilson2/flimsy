@@ -20,11 +20,7 @@ import handlers
 #    * Suite Fixture Teardown
 # * Global Fixture Teardown
 
-
-class TestItem(object):
-    pass
-
-class EntireTestCollection(TestItem):
+class EntireTestCollection(object):
     name = 'Entire Test Collection'
     def __init__(self, suites):
         self.suites = suites
@@ -46,6 +42,9 @@ def filter_with_tags(test_collection, tags):
                 new_suites.append(suite)
                 break
     return EntireTestCollection(new_suites)
+
+# TODO Add results command for listing previous results.
+# TODO Add rerun command to re-run failed tests.
 
 def do_list():
     testloader = loader_mod.Loader()
@@ -76,16 +75,14 @@ def do_run():
 
     try:
         for fixture in fixture_mod.global_fixtures:
-            # TODO Make a base testitem object, and create suite version of it.
             fixture.setup(test_schedule)
     except fixture_mod.SkipException as e:
-        print 'Skipping all tests.'
+        print 'Skipping all suites, a global fixture raised a SkipException.'
         print e.msg
     else:
         # Run all suites.
         for suite in test_schedule:
             suite.runner(suite).run()
-
 
 def initialize_log(config):
     Log = log.Log = log._Log()

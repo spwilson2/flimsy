@@ -14,14 +14,14 @@ class Test(flimsy.TestCase):
     def init(self, value):
         self.value = value
         if not hasattr(self, 'name'):
-            self.name =  'TestPass' if value else 'TestFail'
+            self.name = 'TestPass' if value else 'TestFail'
 
     def test(self, test_parameters):
         assert self.value
 
 # Create a parameterized version of the test
 false_test = Test(False)
-# Create another parameterized version, but supply a name rather than the parameterize's version.
+# Create another parameterized version, but supply a name rather than the parameterized's version default.
 true_test = Test(True, name='TestPassCustom')
 
 

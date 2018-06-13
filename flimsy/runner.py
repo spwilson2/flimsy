@@ -89,7 +89,6 @@ class SuiteRunner(object):
             self.suite.status = test_mod.State.Skipped
         
     def presuite(self):
-        # TODO Add logging for suites.
         for fixture in self.suite.fixtures:
             fixture.setup(self.suite)
         log.Log.suiteresult(self.suite, test_mod.State.InProgress)
