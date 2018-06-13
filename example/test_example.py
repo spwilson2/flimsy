@@ -156,6 +156,7 @@ def debug_message_test(test_parameters):
 # Now all terminal output will be directed to their respective streams as tests are executed.
 
 
+#TODO
 # #################
 # # Configuration
 # #################
@@ -169,6 +170,7 @@ def debug_message_test(test_parameters):
 # # To prevent accidental running of unrelated scripts, by default flimsy will first check files for a top level import statement from flimsy.
 # flimsy.config.checkforimport
 
+# TODO
 # ###############
 # # Other
 # ###############
@@ -191,3 +193,47 @@ def debug_message_test(test_parameters):
 # #       * Test Fixture Teardown
 # #    * Suite Fixture Teardown
 # # * Global Fixture Teardown
+
+#################
+# Usage
+#################
+
+# Once your tests have been created you probably will want to run them!
+# To do so, use the `run`` subcommand like so::
+#   flimsy run [directory]
+# This will run all test at the given directory, if no directory is provided, 
+# the CWD will be used as the directory argument.
+#
+#
+
+# You can limit the selection of test suites run by supplying the `--tags <tag-query>` flag.
+#
+# Say you have the following test suites and you wish to only run suites tagged for the X86 architecture.
+x86_suite = flimsy.TestSuite([Test(True, name='X86Test')], name='X86 Test Suite', tags=['X86'])
+arm64_suite = flimsy.TestSuite([Test(True, name='ARM64Test')], name='X86 Test Suite', tags=['ARM64'])
+
+# To do so, execute the run subcommand as follows::
+# flimsy run --tags X86
+#
+#
+# A note on tags: 
+# Some might ask why tests do not have the tags attribute as well.
+#
+# The reason behind this goes back to flimsy's definition of TestCase and TestSuite.
+# A TestSuite is defined as an inseperable collection of tests.
+# If TestCases could also be tagged and filtered in the same manner as TestSuites then it would be difficult if not impossible to define consistent behavior for test execution.
+# Would the tests in the test suite still run in the same order? 
+# Should the test suite containing the test just be ignored?
+#
+# In order to keep a simpler and consistent interface, flimsy decides to only enable tags at the TestSuite level.
+
+#########################
+# Listing Available Tests
+#########################
+
+# Using the `x86_suite` and `arm64_suite` created above we can also try out listing test suites.
+#
+# To query available tests without running them, use the `list` subcommand with the `--tags` flag just as you would when running::
+#   flimsy list --tags X86
+#
+# This will output a list of all test suites tagged with `X86`.

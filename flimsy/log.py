@@ -151,6 +151,21 @@ class Handler(object):
     def set_verbosity(self, verbosity):
         pass
 
+
+# TODO Log Interface should be more generic:
+# Log should support: 
+# Data and Metadata
+# Data should be an object which implements str()
+# Metadata should be a dictionary
+# 
+# Log will also add a filter interface and handler interface 
+# which will register for metadata key/values.
+#
+# Handlers may optionally support a filter interface, though 
+#
+# It's important for performance that filters can be applied 
+# before data is sent to the log, so filter configuration should be 
+# finalized before log usage.
 class _Log(object):
     def __init__(self):
         self.handlers = []

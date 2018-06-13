@@ -282,11 +282,11 @@ def define_common_args(config):
         #     '--fail-fast',
         #     action='store_true',
         #     help='Stop running on the first instance of failure'),
-        # Argument(
-        #     '--tags',
-        #     action='append',
-        #     default=[],
-        #     help=None),
+        Argument(
+            '--tags',
+            action='append',
+            default=[],
+            help='A tag comparison used to select tests.'),
         Argument(
             '-s',
             '--stream',
@@ -351,6 +351,23 @@ class RunParser(ArgParser):
 
         common_args.directory.add_to(parser)
         common_args.stream.add_to(parser)
+        common_args.tags.add_to(parser)
+
+class ListParser(ArgParser):
+    '''
+    Parser for the "list" command.
+    '''
+    def __init__(self, subparser):
+        parser = subparser.add_parser(
+            'list',
+            help='''List/Query available tests'''
+        )
+
+        super(ListParser, self).__init__(parser)
+
+        common_args.directory.add_to(parser)
+        common_args.stream.add_to(parser)
+        common_args.tags.add_to(parser)
 
 config = _Config()
 define_constants(config.constants)
@@ -378,7 +395,7 @@ def initialize_config():
     # Setup parser and subcommands
     baseparser = CommandParser()
     runparser = RunParser(baseparser.subparser)
-    #listparser = ListParser(baseparser.subparser)
+    listparser = ListParser(baseparser.subparser)
     #rerunparser = RerunParser(baseparser.subparser)
     #clientparser = ClientParser(baseparser.subparser)
 

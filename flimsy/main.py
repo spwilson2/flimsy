@@ -31,13 +31,34 @@ class EntireTestCollection(TestItem):
     def __iter__(self):
         return iter(self.suites)
 
-def dorun():    
+def filter_with_tags(test_collection, tags):
+    if not tags:
+        return EntireTestCollection(test_collection)
+
+    # TODO Extend filter logic with --exclude-tags --include-tags with regex.
+    # They should be applied in order they were on command line:
+    # E.g. --exclude-tags .* --include-tags .* will return nothing since everything was excluded.
+
+    new_suites = []
+    for suite in test_collection:
+        for tag in suite.tags:
+            if tag in tags:
+                new_suites.append(suite)
+                break
+    return EntireTestCollection(new_suites)
+
+def do_list():
+    testloader = loader_mod.Loader()
+    testloader.load_root('example')
+    for suite in filter_with_tags(testloader.suites, config.config.tags):
+        print(suite)
+
+def do_run():    
     testloader = loader_mod.Loader()
     testloader.load_root('example')
 
-    # TODO First pass through all the suites to create the test schedule object.
-
-    test_schedule = EntireTestCollection(testloader.suites)
+    # First pass through all the suites to create the test schedule object.
+    test_schedule = filter_with_tags(testloader.suites, config.config.tags)
 
     # Iterate through all fixtures parameterizing them in order.
     fixtures = tuple()
@@ -82,5 +103,5 @@ def main():
     initialize_log(config.config)
 
     # 'do' the given command.
-    globals()['do'+config.config.command]()
+    globals()['do_'+config.config.command]()
     log.Log.close()

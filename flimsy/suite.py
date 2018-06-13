@@ -14,12 +14,13 @@ class TestSuite(object):
         instances.append(obj)
         return obj
 
-    def __init__(self, tests, name):
+    def __init__(self, tests, name, tags=tuple()):
         self.name = name
         self.tests = tests
         self.status = test_mod.State.NotRun
         self.path = __file__
         self.uid = uid.uid(self)
+        self.tags = set(tags)
     
     def __iter__(self):
         return iter(self.tests)
