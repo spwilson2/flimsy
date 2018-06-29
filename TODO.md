@@ -2,10 +2,10 @@
 
 In order of priority:
 
-- Add some functional/unit tests for this library itself
+- Log failed fixture build errors.
 - Refactor Log into a more generic interface that allows filtering before reciept of data (to improve performance)
-- Add guarunteed attempt at teardown for fixtures (currently if setup calls skip, teardown is never performed)
-  - Catch fixture setup exceptions.
+- Refactor fixture building logic, lots of duplicate code in runners.
+- Add some functional/unit tests for this library itself
 - Add documentation
 - Add `results` command to query/print previous test results
 - Add `rerun` command to re-run failed tests

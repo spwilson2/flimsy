@@ -28,14 +28,46 @@ class TestParameters(object):
         self.test = test
         self.log = LogWrapper(test)
 
+class BrokenFixtureException(Exception):
+    pass
+
+class FixtureBuilder(object):
+    # TODO Add logging of fixture setup/teardown
+    
+    def __init__(self, fixtures):
+        self.fixtures = fixtures
+        self.built_fixtures = []
+
+    def setup(self, testitem):
+        for fixture in self.fixtures:
+            # Mark as built before, so if the build fails 
+            # we still try to tear it down.
+            self.built_fixtures.append(fixture)
+            try:
+                fixture.setup(testitem)
+            except Exception as e:
+                raise BrokenFixtureException(e)
+            
+    def teardown(self, testitem):
+        for fixture in self.built_fixtures:
+            try:
+                fixture.teardown(testitem)
+            except Exception as e:
+                # TODO Log the exception, keep cleaning up.
+                pass
+
 
 class TestRunner(object):
     def __init__(self, test):
         self.test = test
     
     def run(self):
-        self.pretest()
-        self.sandbox_test()
+        try:
+            self.pretest()
+        except BrokenFixtureException:
+            self.test.status = test_mod.State.Skipped
+        else:
+            self.sandbox_test()
         self.posttest()
 
         return self.test.status
@@ -49,26 +81,32 @@ class TestRunner(object):
             self.test.status = test_mod.State.Passed
 
     def pretest(self):
-        for fixture in self.test.fixtures:
-            fixture.setup(self.test)
         log.Log.testresult(self.test, test_mod.State.InProgress)
+        self.builder = FixtureBuilder(self.test.fixtures)
+        self.builder.setup(self.test)
 
     def posttest(self):
         log.Log.testresult(self.test, self.test.status)
-        for fixture in self.test.fixtures:
-            fixture.teardown(self.test)
+        self.builder.teardown(self.test)
 
 class SuiteRunner(object):
     def __init__(self, suite):
         self.suite = suite
 
     def run(self):
-        self.presuite()
-        for test in self.suite:
-            test.runner(test).run()
+        try:
+            self.presuite()
+        except BrokenFixtureException:
+            self.suite.status = test_mod.State.Skipped
+        else:
+            print(tuple(self.suite))
+            for test in self.suite:
+                test.runner(test).run()
+                print test
+            self.suite.status = self.compute_result()
         self.postsuite()
 
-    def set_result(self):
+    def compute_result(self):
         '''        
         Status of the test suite by default is:
         * Passed if all contained tests passed
@@ -80,21 +118,18 @@ class SuiteRunner(object):
         passed = False
         for test in self.suite.tests:
             if test.status == test_mod.State.Failed:
-                self.suite.status = test.status
-                return
+                return test.status
             passed |= test.status == test_mod.State.Passed
         if passed:
-            self.suite.status = test_mod.State.Passed
+            return test_mod.State.Passed
         else:
-            self.suite.status = test_mod.State.Skipped
+            return test_mod.State.Skipped
         
     def presuite(self):
-        for fixture in self.suite.fixtures:
-            fixture.setup(self.suite)
         log.Log.suiteresult(self.suite, test_mod.State.InProgress)
+        self.builder = FixtureBuilder(self.suite.fixtures)
+        self.builder.setup(self.suite)
 
     def postsuite(self):
-        self.set_result()
         log.Log.suiteresult(self.suite, self.suite.status)
-        for fixture in self.suite.fixtures:
-            fixture.teardown(self.suite)
+        self.builder.teardown(self.suite)
