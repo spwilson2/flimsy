@@ -17,7 +17,7 @@ def create_fixture(method):
 
 
 def _broken_method(*args, **kwargs):
-    raise BrokenFixtureException()
+    raise BrokenFixtureException('Broken Fixture')
 
 class EmptyTestCase(flimsy.TestCase):
     def test(self, test_parameters):

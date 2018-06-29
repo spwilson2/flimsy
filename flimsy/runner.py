@@ -1,6 +1,7 @@
+import traceback
+
 import test as test_mod
 import log
-
 import sandbox
 
 class LogWrapper(object):
@@ -46,15 +47,20 @@ class FixtureBuilder(object):
             try:
                 fixture.setup(testitem)
             except Exception as e:
+                exc = traceback.format_exc()
+                print(exc)
+                print('Exception raised while setting up fixture for %s' % testitem)
                 raise BrokenFixtureException(e)
             
     def teardown(self, testitem):
         for fixture in self.built_fixtures:
             try:
                 fixture.teardown(testitem)
-            except Exception as e:
+            except Exception:
                 # TODO Log the exception, keep cleaning up.
-                pass
+                exc = traceback.format_exc()
+                print(exc)
+                print('Exception raised while tearing down fixture for %s' % testitem)
 
 
 class TestRunner(object):
@@ -99,10 +105,8 @@ class SuiteRunner(object):
         except BrokenFixtureException:
             self.suite.status = test_mod.State.Skipped
         else:
-            print(tuple(self.suite))
             for test in self.suite:
                 test.runner(test).run()
-                print test
             self.suite.status = self.compute_result()
         self.postsuite()
 
