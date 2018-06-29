@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+#set -e
 
 virtualenv venv -p /usr/bin/python2
 source venv/bin/activate

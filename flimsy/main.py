@@ -54,13 +54,13 @@ def filter_with_tags(test_collection, filters):
 
 def do_list():
     testloader = loader_mod.Loader()
-    testloader.load_root('example')
-    for suite in filter_with_tags(testloader.suites, config.config.tags):
+    testloader.load_root(config.config.directory)
+    for suite in filter_with_config_tags(testloader.suites):
         print(suite)
 
 def do_run():    
     testloader = loader_mod.Loader()
-    testloader.load_root('example')
+    testloader.load_root(config.config.directory)
 
     # First pass through all the suites to create the test schedule object.
     test_schedule = filter_with_config_tags(testloader.suites)

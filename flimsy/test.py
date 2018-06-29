@@ -26,20 +26,25 @@ class TestCase(object):
         return obj
 
     def __init__(self, *args, **kwargs):
+        if not self.fixtures:
+            self.fixtures = []
         name = kwargs.pop('name', None)
         if name is not None:
             self.name = name
+
         self.init(*args, **kwargs)
+
         self.status = State.NotRun
         self.path = __file__
         self.uid = uid.uid(self)
     
-    def init(self):
+    def init(self, *args, **kwargs):
         pass
 
+# TODO Change the decorator to make this easier to create copy tests.
+# Good way to do so might be return by reference.
 def testfunction(f):
     testcase = TestCase(name=f.__name__)
-    # TODO/FIXME How to eat the self argument??
     testcase.test = f
     return f
 

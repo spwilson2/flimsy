@@ -14,13 +14,19 @@ class TestSuite(object):
         instances.append(obj)
         return obj
 
-    def __init__(self, tests, name, tags=tuple()):
-        self.name = name
-        self.tests = tests
+    def __init__(self, *args, **kwargs):
+        name = kwargs.pop('name', None)
+        if name is not None:
+            self.name = name
+        self.tests = kwargs.pop('tests', [])
+        self.tags = set(kwargs.pop('tags', tuple()))
+        self.init(*args, **kwargs)
         self.status = test_mod.State.NotRun
         self.path = __file__
         self.uid = uid.uid(self)
-        self.tags = set(tags)
-    
+
+    def init(self, *args, **kwargs):
+        pass
+
     def __iter__(self):
         return iter(self.tests)
