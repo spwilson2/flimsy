@@ -2,8 +2,9 @@
 
 In order of priority:
 
-- Refactor Log into a more generic interface that allows filtering before reciept of data (to improve performance)
 - Use the log rather than print statements to report fixture build errors.
+- Prevent duplicate test suite names.
+- Fix saving results for suites with duplicate test names.
 - Refactor fixture building logic, lots of duplicate code in runners.
 - Add some functional/unit tests for this library itself
 - Add documentation

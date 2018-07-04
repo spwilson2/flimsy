@@ -16,8 +16,6 @@ class BrokenFixtureException(Exception):
     pass
 
 class FixtureBuilder(object):
-    # TODO Add logging of fixture setup/teardown
-    
     def __init__(self, fixtures):
         self.fixtures = fixtures
         self.built_fixtures = []
@@ -31,19 +29,19 @@ class FixtureBuilder(object):
                 fixture.setup(testitem)
             except Exception as e:
                 exc = traceback.format_exc()
-                print(exc)
-                print('Exception raised while setting up fixture for %s' % testitem)
+                msg = 'Exception raised while setting up fixture for %s' % testitem.uid
+                log.test_log.warn('%s\n%s' % (exc, msg))
                 raise BrokenFixtureException(e)
-            
+        
     def teardown(self, testitem):
         for fixture in self.built_fixtures:
             try:
                 fixture.teardown(testitem)
             except Exception:
-                # TODO Log the exception, keep cleaning up.
+                # Log exception but keep cleaning up.
                 exc = traceback.format_exc()
-                print(exc)
-                print('Exception raised while tearing down fixture for %s' % testitem)
+                msg = 'Exception raised while tearing down fixture for %s' % testitem.uid
+                log.test_log.warn('%s\n%s' % (exc, msg))
 
 
 class TestRunner(object):
