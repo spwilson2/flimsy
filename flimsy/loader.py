@@ -58,6 +58,8 @@ class Loader(object):
         self.suites = []
         self.tests = []
         self.fixtures = []
+
+        self.suite_uids = set()
         self.filepath_filter = default_filepath_filter
 
     def load_root(self, root):
@@ -112,7 +114,13 @@ class Loader(object):
         
         try:
             execfile(path, newdict, newdict)
-            #six.exec_(open(path).read(), newdict, newdict)
+
+            new_suite_uids = self.suite_uids.copy()
+            for suite in new_suites:
+                if suite.uid in new_suite_uids:
+                    raise DuplicateTestSuiteException(
+                            "More than one suite with UID '%s' was defined" % suite.uid)
+                new_suite_uids.add(suite.uid)
         except Exception as e:
             log.test_log.warn('Exception thrown while loading "%s"\n\n'
                             '%s' % (path, traceback.format_exc()))
@@ -121,6 +129,8 @@ class Loader(object):
 
         self.tests.extend(new_tests)
         self.suites.extend(new_suites)
+        for suite in new_suites:
+            self.suite_uids.add(suite.uid)
         self.fixtures.extend(new_fixtures)
 
         # Create a module test suite for those not contained in a suite.
@@ -156,5 +166,5 @@ class Loader(object):
                     yield filepaths
 
 
-class DuplicateTestItemException(Exception):
+class DuplicateTestSuiteException(Exception):
     pass

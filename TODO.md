@@ -2,7 +2,7 @@
 
 In order of priority:
 
-- Prevent duplicate test suite names.
+
 - Fix saving results for suites with duplicate test names.
 - Add test, suite, library timing
 - Add some functional/unit tests for this library itself
@@ -13,4 +13,5 @@ In order of priority:
 - Rework the Config
   - Initialization should be less "magic"
   - Add a plugin interface (so the library doesn't need to be modified)
+- Catch duplicate UIDs on instantiation rather than loading (so it's easier to debug the source file.)
 - Add a multiprocessing TestSuite runner
