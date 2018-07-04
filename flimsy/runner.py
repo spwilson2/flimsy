@@ -1,33 +1,16 @@
 import traceback
 
+import state
 import test as test_mod
 import log
 import sandbox
-
-class LogWrapper(object):
-    def __init__(self, test):
-        self.test = test
-        self.__log = log.Log
-
-    def debug(self, message):
-        self._log(message, level=log.Level.Debug)
-    
-    def warn(self, message):
-        self._log(message, level=log.Level.Warn)
-
-    def log(self, message, level=log.Level.Info):
-        self._log(message, level)
-
-    def _log(self, message, level):
-        self.__log.testmessage(self.test, message, level, log.find_caller())
-
 
 class TestParameters(object):
     def __init__(self, test):
         # Fixtures
         # Log
         self.test = test
-        self.log = LogWrapper(test)
+        self.log = log.TestLogWrapper(log.test_log, test)
 
 class BrokenFixtureException(Exception):
     pass
@@ -71,7 +54,7 @@ class TestRunner(object):
         try:
             self.pretest()
         except BrokenFixtureException:
-            self.test.status = test_mod.State.Skipped
+            self.test.status = state.State.Skipped
         else:
             self.sandbox_test()
         self.posttest()
@@ -82,17 +65,17 @@ class TestRunner(object):
         try:
             sandbox.Sandbox(self.test, TestParameters(self.test))
         except sandbox.SubprocessException as e:
-            self.test.status = test_mod.State.Failed
+            self.test.status = state.State.Failed
         else:
-            self.test.status = test_mod.State.Passed
+            self.test.status = state.State.Passed
 
     def pretest(self):
-        log.Log.testresult(self.test, test_mod.State.InProgress)
+        log.test_log.test_status(self.test, state.State.InProgress)
         self.builder = FixtureBuilder(self.test.fixtures)
         self.builder.setup(self.test)
 
     def posttest(self):
-        log.Log.testresult(self.test, self.test.status)
+        log.test_log.test_status(self.test, self.test.status)
         self.builder.teardown(self.test)
 
 class SuiteRunner(object):
@@ -103,7 +86,7 @@ class SuiteRunner(object):
         try:
             self.presuite()
         except BrokenFixtureException:
-            self.suite.status = test_mod.State.Skipped
+            self.suite.status = state.State.Skipped
         else:
             for test in self.suite:
                 test.runner(test).run()
@@ -121,19 +104,19 @@ class SuiteRunner(object):
         '''
         passed = False
         for test in self.suite.tests:
-            if test.status == test_mod.State.Failed:
+            if test.status == state.State.Failed:
                 return test.status
-            passed |= test.status == test_mod.State.Passed
+            passed |= test.status == state.State.Passed
         if passed:
-            return test_mod.State.Passed
+            return state.State.Passed
         else:
-            return test_mod.State.Skipped
+            return state.State.Skipped
         
     def presuite(self):
-        log.Log.suiteresult(self.suite, test_mod.State.InProgress)
+        log.test_log.suite_status(self.suite, state.State.InProgress)
         self.builder = FixtureBuilder(self.suite.fixtures)
         self.builder.setup(self.suite)
 
     def postsuite(self):
-        log.Log.suiteresult(self.suite, self.suite.status)
+        log.test_log.suite_status(self.suite, self.suite.status)
         self.builder.teardown(self.suite)

@@ -37,7 +37,6 @@ def filter_with_tags(test_collection, filters):
 
     def apply_tag_filter(include, regex, suite):
         for tag in suite.tags:
-            print tag
             if regex.search(tag):
                 return include
         return not include
@@ -58,7 +57,7 @@ def do_list():
     for suite in filter_with_config_tags(testloader.suites):
         print(suite)
 
-def do_run():    
+def do_run():
     testloader = loader_mod.Loader()
     testloader.load_root(config.config.directory)
 
@@ -91,15 +90,16 @@ def do_run():
             suite.runner(suite).run()
 
 def initialize_log(config):
-    Log = log.Log = log._Log()
 
     term_handler = handlers.TerminalHandler(
         stream=config.stream,
-        verbosity=config.verbose+log.Level.Info
+        verbosity=config.verbose+log.LogLevel.Info
     )
-    summary_handler = handlers.SummaryHandler()
     result_handler = handlers.ResultHandler()
-    Log.add_handler(handlers.MultiprocessingHandlerWrapper(term_handler, result_handler, summary_handler))
+    summary_handler = handlers.SummaryHandler()
+    mp_handler = handlers.MultiprocessingHandlerWrapper(result_handler, summary_handler, term_handler)
+    mp_handler.async_process()
+    log.test_log.log_obj.add_handler(mp_handler)
 
 def main():
     config.initialize_config()
@@ -107,4 +107,4 @@ def main():
 
     # 'do' the given command.
     globals()['do_'+config.config.command]()
-    log.Log.close()
+    log.test_log.close()

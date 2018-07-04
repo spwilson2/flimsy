@@ -1,5 +1,6 @@
 import os
-from config import constants
+
+import config
 
 def uid(testitem, class_name=None):
     '''
@@ -9,7 +10,7 @@ def uid(testitem, class_name=None):
     # directory.
     filepath = testitem.path
     filepath = os.path.relpath(filepath,
-                               os.path.commonprefix((constants.testing_base,
+                               os.path.commonprefix((config.constants.testing_base,
                                                     filepath)))
     fmt = '{file}:{class_}:{name}'
     if class_name is None:
@@ -20,4 +21,4 @@ def uid(testitem, class_name=None):
 # FIXME: Should merge UID functions into a full blown class.
 def path_from_uid(uid):
     split_path = uid.split(':')[0]
-    return os.path.join(constants.testing_base, split_path)
+    return os.path.join(config.constants.testing_base, split_path)

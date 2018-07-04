@@ -235,3 +235,19 @@ class FrozenAttrDict(AttrDict):
             raise FrozenSetException('Cannot modify an attribute in a FozenAttrDict')
         else:
             super(FrozenAttrDict, self).update(items)
+
+class InstanceCollector(object):
+    def __init__(self):
+        self.collectors = []
+    
+    def create(self):
+        collection = []
+        self.collectors.append(collection)
+        return collection
+
+    def remove(self, collector):
+        self.collectors.remove(collector)
+        
+    def collect(self, instance):
+        for col in self.collectors:
+            col.append(instance)

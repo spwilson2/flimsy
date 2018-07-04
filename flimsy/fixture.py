@@ -1,4 +1,5 @@
-instances = []
+import helper
+
 global_fixtures = []
 
 class TestScheduleUnknown(Exception):
@@ -14,9 +15,11 @@ class SkipException(Exception):
         super(SkipException, self).__init__(self.msg)
 
 class Fixture(object):
+    collector = helper.InstanceCollector()
+
     def __new__(klass, *args, **kwargs):
         obj = super(Fixture, klass).__new__(klass, *args, **kwargs)
-        instances.append(obj)
+        Fixture.collector.collect(obj)
         return obj
 
     def __init__(self, *args, **kwargs):

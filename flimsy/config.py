@@ -207,7 +207,6 @@ def define_post_processors(config):
             return (verbose[0].val,)
     
     def compile_tag_regex(positional_tags):
-        print positional_tags
         if not positional_tags:
             return positional_tags
         else:

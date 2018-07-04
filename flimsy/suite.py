@@ -1,17 +1,29 @@
+
+import helper
 import runner as runner_mod
+import state
 import test as test_mod
 import uid
 
 instances = []
 
+class TestSuiteMetadata():
+    def __init__(self, name, uid, tags, path, status):
+        self.name = name
+        self.uid = uid
+        self.tags = tags
+        self.path = path
+        self.status = status
+
 class TestSuite(object):
     fixtures = tuple()
     #TODO Change to default if no runner set.
     runner = runner_mod.SuiteRunner
+    collector = helper.InstanceCollector()
 
     def __new__(klass, *args, **kwargs):
         obj = super(TestSuite, klass).__new__(klass, *args, **kwargs)
-        instances.append(obj)
+        TestSuite.collector.collect(obj)
         return obj
 
     def __init__(self, *args, **kwargs):
@@ -20,10 +32,21 @@ class TestSuite(object):
             self.name = name
         self.tests = kwargs.pop('tests', [])
         self.tags = set(kwargs.pop('tags', tuple()))
-        self.init(*args, **kwargs)
-        self.status = test_mod.State.NotRun
+        self.status = state.State.NotRun
         self.path = __file__
+
+        self.init(*args, **kwargs)
         self.uid = uid.uid(self)
+
+    @property
+    def metadata(self):
+        return TestSuiteMetadata( **{
+            'name': self.name,
+            'tags': self.tags,
+            'status': self.status,
+            'path': self.path,
+            'uid': self.uid
+        })
 
     def init(self, *args, **kwargs):
         pass

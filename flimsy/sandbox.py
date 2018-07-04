@@ -27,7 +27,7 @@ class ForkedPdb(pdb._Pdb):
 class IoManager(object):
     def __init__(self, test):
         self.test = test
-        self.log = log.Log
+        self.log = log.test_log
         self._init_pipes()
     
     def _init_pipes(self):
@@ -80,11 +80,11 @@ class IoManager(object):
 
         self.stdout_thread = threading.Thread(
                 target=_log_output,
-                args=(self.stdout_rp, lambda buf: log.stdout(test, buf))
+                args=(self.stdout_rp, lambda buf: log.test_stdout(test, buf))
         )
         self.stderr_thread = threading.Thread(
                 target=_log_output,
-                args=(self.stderr_rp, lambda buf: log.stderr(test, buf))
+                args=(self.stderr_rp, lambda buf: log.test_stderr(test, buf))
         )
         self.stdout_thread.start()
         self.stderr_thread.start()

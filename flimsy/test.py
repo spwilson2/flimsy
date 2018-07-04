@@ -1,42 +1,47 @@
 import functools
+
+import helper
 import runner as runner_mod
+import state
 import uid
 
-class State():
-    enums = '''
-    NotRun
-    InProgress
-    Skipped
-    Passed
-    Failed
-    '''.split()
-
-    for idx, enum in enumerate(enums):
-        locals()[enum] = idx
-
-instances = []
+class TestCaseMetadata():
+    def __init__(self, name, uid, path, status):
+        self.name = name
+        self.uid = uid
+        self.path = path
+        self.status = status
 
 class TestCase(object):
     fixtures = tuple()
     runner = runner_mod.TestRunner
+    collector = helper.InstanceCollector()
 
     def __new__(klass, *args, **kwargs):
         obj = super(TestCase, klass).__new__(klass, *args, **kwargs)
-        instances.append(obj)
+        TestCase.collector.collect(obj)
         return obj
 
     def __init__(self, *args, **kwargs):
-        if not self.fixtures:
-            self.fixtures = []
+        self.fixtures = list(self.fixtures)
         name = kwargs.pop('name', None)
         if name is not None:
             self.name = name
 
-        self.init(*args, **kwargs)
-
-        self.status = State.NotRun
+        self.status = state.State.NotRun
         self.path = __file__
+
+        self.init(*args, **kwargs)
         self.uid = uid.uid(self)
+
+    @property
+    def metadata(self):
+        return TestCaseMetadata( **{
+            'name': self.name,
+            'path': self.path,
+            'uid': self.uid,
+            'status': self.status
+        })
     
     def init(self, *args, **kwargs):
         pass

@@ -52,6 +52,9 @@ class Loader(object):
         automatically be placed into one for the module.
     '''
     def __init__(self):
+        # TODO Remove this monolithic loading style. 
+        # Allow the users to just load a single file at a time naturally 
+        # rather than creating a huge loader object.
         self.suites = []
         self.tests = []
         self.fixtures = []
@@ -94,33 +97,27 @@ class Loader(object):
         cwd = os.getcwd()
         os.chdir(os.path.dirname(path))
 
+        new_tests = test_mod.TestCase.collector.create()
+        new_suites = suite_mod.TestSuite.collector.create()
+        new_fixtures = fixture_mod.Fixture.collector.create()
+
         def cleanup():
             sys.path[:] = old_path
             os.chdir(cwd)
-            # TODO Rather than repeat this create a collector, use the corrector to create a __new__ function for each base we want to collect.
-            # Then just call the reset on the collector.
-            if test_mod.instances:
-                del test_mod.instances[:]
-            if suite_mod.instances:
-                del suite_mod.instances[:]
-            if fixture_mod.instances:
-                del fixture_mod.instances[:]
-            config.reset_for_module()
+            test_mod.TestCase.collector.remove(new_tests)
+            suite_mod.TestSuite.collector.remove(new_suites)
+            fixture_mod.Fixture.collector.remove(new_fixtures)
 
+            config.reset_for_module()
+        
         try:
             execfile(path, newdict, newdict)
             #six.exec_(open(path).read(), newdict, newdict)
         except Exception as e:
-            log.Log.message('Exception thrown while loading "%s"\n\n'
-                            '%s' % (path, traceback.format_exc()),
-                            log.Level.Warn)
-            #TODO Sandbox loading.
+            log.test_log.warn('Exception thrown while loading "%s"\n\n'
+                            '%s' % (path, traceback.format_exc()))
             cleanup()
             return
-    
-        new_tests = test_mod.instances
-        new_suites = suite_mod.instances
-        new_fixtures = fixture_mod.instances
 
         self.tests.extend(new_tests)
         self.suites.extend(new_suites)
