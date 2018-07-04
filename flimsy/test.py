@@ -24,10 +24,7 @@ class TestCase(object):
 
     def __init__(self, *args, **kwargs):
         self.fixtures = list(self.fixtures)
-        name = kwargs.pop('name', None)
-        if name is not None:
-            self.name = name
-
+        self.name = kwargs.pop('name', self.__class__.__name__)
         self.status = state.State.NotRun
         self.path = __file__
 

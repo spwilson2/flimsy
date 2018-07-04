@@ -16,7 +16,6 @@ class TestSuiteMetadata():
         self.status = status
 
 class TestSuite(object):
-    fixtures = tuple()
     #TODO Change to default if no runner set.
     runner = runner_mod.SuiteRunner
     collector = helper.InstanceCollector()
@@ -30,6 +29,7 @@ class TestSuite(object):
         name = kwargs.pop('name', None)
         if name is not None:
             self.name = name
+        self.fixtures = kwargs.pop('fixtures', [])
         self.tests = kwargs.pop('tests', [])
         self.tags = set(kwargs.pop('tags', tuple()))
         self.status = state.State.NotRun

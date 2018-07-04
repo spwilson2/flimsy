@@ -10,10 +10,10 @@ import pdb
 class Test(flimsy.TestCase):
     # Instead of users needing to explicitly call super().__init__, init is passed the same arguments as __init__.
     # If name is passed as a keyword argument to __init__, it will be used as the name of the test. 
-    # If not, init must set the name attribute.
+    # If not, the test will take the name of the class.
     def init(self, value):
         self.value = value
-        if not hasattr(self, 'name'):
+        if self.name == 'Test':
             self.name = 'TestPass' if value else 'TestFail'
 
     def test(self, test_parameters):
@@ -63,9 +63,37 @@ ReverseSuite(tests=tests, name='Reversed Truth Tests')
 
 # Like many test frameworks Flimsy supports the concept of fixtures.
 # Fixtures are a way to perform setup and cleanup of requirements for test execution.
+# They also are useful for parameterizing tests and carrying state between tests within a TestSuite.
+
+
+# For example, say we have a test which stores some state in a temporary file, and the next test needs to accees that state.
+class TempfileFixture(flimsy.Fixture):
+    def setup(self, testitem):
+        import tempfile
+        self.file_ = tempfile.TemporaryFile()
+    def teardown(self, testitem):
+        self.file_.close()
+
+suite = flimsy.TestSuite(name='Tempfile Test Suite', fixtures=[TempfileFixture()])
+
+class WriteTempTest(flimsy.TestCase):
+    def test(self, test_parameters):
+        tempfile_fixture = test_parameters.suite.fixtures[0]
+        tempfile_fixture.file_.write('hello')
+        tempfile_fixture.file_.flush()
+
+class ReadTempTest(flimsy.TestCase):
+    def test(self, test_parameters):
+        tempfile_fixture = test_parameters.suite.fixtures[0]
+        tempfile_fixture.file_.seek(0, 0)
+        assert 'hello' == tempfile_fixture.file_.read()
+
+suite.tests.append(WriteTempTest())
+suite.tests.append(ReadTempTest())
+
 
 # Unlike some test frameworks, fixtures are enumerated and initialized in two steps.
-# After all tests files have been enumerated and all tests have been parameterized, fixtures for each test scheduled to run will be parameterized by calling init().
+# After all tests files have been enumerated and all tests have been parameterized, fixtures for each test scheduled to run will be notified of the test schedule by having their `schedule_finalized` method called.
 # Then the test execution phase begins. 
 # Before each test item is executed the associated fixture will be setup(), and after the test, teardown() will be called.
 # This two phase approach is particularly useful for interacting with build systems or any time a fixture needs to know of all other fixtures or scheduled tests.
@@ -73,11 +101,11 @@ class BuildSystemFixture(flimsy.Fixture):
     targets = []
     def setup(self, testitem):
         import subprocess
-        #fdsf
-        # if subprocess.call('make ' + ''.join(self.targets), shell='/bin/bash'):
-        #     self.skip(testitem)
+        fdsf
+        if subprocess.call('make ' + ''.join(self.targets), shell='/bin/bash'):
+            self.skip(testitem)
 
-flimsy.globalfixture(BuildSystemFixture(name='Make Build System'))
+#flimsy.globalfixture(BuildSystemFixture(name='Make Build System'))
 class BuildTargetFixture(flimsy.Fixture):
     def init(self, target):
         BuildSystemFixture.targets.append(target)
@@ -110,11 +138,10 @@ class SkippedTest(flimsy.TestCase):
 # As an example, you might wish that the test suite would fail all additional tests after a single test has failed.
 # To modify the default running behavior, overrride the run method.
 class IterativeRunner(flimsy.SuiteRunner):
-    def run(self):
-        self.presuite()
-        test_iter = iter(self.suite)
+    def handle_run(self):
+        test_iter = iter(self.testitem)
         for test in test_iter:
-            result = test.runner(test).run()
+            result = test.runner(test, self.suite).execute()
             if result == flimsy.State.Failed:
                 flimsy.log.test_log.message(
                     'Test "%s" failed, skipping' 
@@ -125,7 +152,6 @@ class IterativeRunner(flimsy.SuiteRunner):
             # it's probably not likely for users to modify behavior at this level. 
             test.result = flimsy.State.Skipped
             flimsy.log.test_log.test_status(test, test.result)
-        self.postsuite()
 
 class FailFastSuite(flimsy.TestSuite):
     runner = IterativeRunner

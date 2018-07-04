@@ -6,6 +6,25 @@ import test as test_mod
 import log
 import sandbox
 
+def compute_aggregate_result(iterable):
+    '''        
+    Status of the test suite by default is:
+    * Passed if all contained tests passed
+    * Failed if any contained tests failed
+    * Skipped if all contained tests were skipped
+    * NotRun if all contained tests have not run
+    * Unknown if there is one or more tests NotRun and one or more are marked  either Passed or Skipped
+    '''
+    passed = False
+    for testitem in iterable:
+        if testitem.status == state.State.Failed:
+            return testitem.status
+        passed |= testitem.status == state.State.Passed
+    if passed:
+        return state.State.Passed
+    else:
+        return state.State.Skipped
+
 class RunnerPattern(object):
     def __init__(self, testitem):
         self.testitem = testitem
@@ -41,67 +60,61 @@ class RunnerPattern(object):
         self.handle_postbuild()
 
 class TestParameters(object):
-    def __init__(self, test):
-        #TODO Pass Suite Fixtures by passing suite object.
+    def __init__(self, test, suite):
         self.test = test
+        self.suite = suite
         self.log = log.TestLogWrapper(log.test_log, test)
 
 class TestRunner(RunnerPattern):
+    def __init__(self, test, suite):
+        RunnerPattern.__init__(self, test)
+        self.suite = suite
+        self.test = test
+
     def handle_run(self):
         self.sandbox_test()
 
     def handle_prebuild(self):
-        log.test_log.test_status(self.testitem, state.State.InProgress)
+        log.test_log.test_status(self.test, state.State.InProgress)
 
     def handle_postbuild(self):
-        log.test_log.test_status(self.testitem, self.testitem.status)
+        log.test_log.test_status(self.test, self.test.status)
     
     def sandbox_test(self):
         try:
-            sandbox.Sandbox(self.testitem, TestParameters(self.testitem))
+            sandbox.Sandbox(self.test, TestParameters(self.test, self.suite))
         except sandbox.SubprocessException as e:
-            self.testitem.status = state.State.Failed
+            self.test.status = state.State.Failed
         else:
-            self.testitem.status = state.State.Passed
+            self.test.status = state.State.Passed
 
 
 class SuiteRunner(RunnerPattern):
+    def __init__(self, suite):
+        RunnerPattern.__init__(self, suite)
+        self.suite = suite
+
     def handle_run(self):
-        for test in self.testitem:
-            test.runner(test).execute()
-        self.testitem.status = self.compute_result()
+        for test in self.suite:
+            test.runner(test=test, suite=self.suite).execute()
+        self.suite.status = compute_aggregate_result(
+                iter(self.suite)
+        )
         
     def handle_prebuild(self):
-        log.test_log.suite_status(self.testitem, state.State.InProgress)
+        log.test_log.suite_status(self.suite, state.State.InProgress)
 
     def handle_postbuild(self):
-        log.test_log.suite_status(self.testitem, self.testitem.status)
-
-    def compute_result(self):
-        '''        
-        Status of the test suite by default is:
-        * Passed if all contained tests passed
-        * Failed if any contained tests failed
-        * Skipped if all contained tests were skipped
-        * NotRun if all contained tests have not run
-        * Unknown if there is one or more tests NotRun and one or more are marked  either Passed or Skipped
-        '''
-        passed = False
-        for test in self.testitem.tests:
-            if test.status == state.State.Failed:
-                return test.status
-            passed |= test.status == state.State.Passed
-        if passed:
-            return state.State.Passed
-        else:
-            return state.State.Skipped
+        log.test_log.suite_status(self.suite, self.suite.status)
 
 class LibraryRunner(RunnerPattern):
     def handle_run(self):
         for suite in self.testitem.suites:
             suite.runner(suite).execute()
-        self.testitem.status = state.State.Passed
-    
+        self.testitem.status = compute_aggregate_result(
+                iter(self.testitem)
+        )
+
     def handle_broken_fixture(self, broken_fixture_exception):
         exc = traceback.format_exc(e)
         msg = 'Global Fixture %s failed to build. Skipping all tests.' % e.fixture

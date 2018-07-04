@@ -2,7 +2,6 @@
 
 In order of priority:
 
-- Pass suite to test cases (so they can access suite level fixtures)
 - Prevent duplicate test suite names.
 - Fix saving results for suites with duplicate test names.
 - Add test, suite, library timing

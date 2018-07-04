@@ -27,3 +27,6 @@ class TestSchedule(object):
             'uid': self.name,
             'name': self.name,
         }
+    
+    def __iter__(self):
+        return iter(self.suites)
