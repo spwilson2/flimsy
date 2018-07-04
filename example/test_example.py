@@ -73,10 +73,11 @@ class BuildSystemFixture(flimsy.Fixture):
     targets = []
     def setup(self, testitem):
         import subprocess
-        if subprocess.call('make ' + ''.join(self.targets), shell='/bin/bash'):
-            self.skip(testitem)
+        #fdsf
+        # if subprocess.call('make ' + ''.join(self.targets), shell='/bin/bash'):
+        #     self.skip(testitem)
 
-#flimsy.globalfixture(BuildSystemFixture(name='Make Build System'))
+flimsy.globalfixture(BuildSystemFixture(name='Make Build System'))
 class BuildTargetFixture(flimsy.Fixture):
     def init(self, target):
         BuildSystemFixture.targets.append(target)

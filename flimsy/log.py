@@ -65,6 +65,9 @@ class TestMessage(Record, VerbosityRecordMixin):
 class SuiteStatus(Record, StatusRecordMixin):
     pass
 
+class LibraryStatus(Record, StatusRecordMixin):
+    pass
+
 class LibraryMessage(Record, VerbosityRecordMixin):
     pass
 
@@ -281,6 +284,9 @@ class LogWrapper(object):
     
     def suite_status(self, suite, status):
         self.log_obj.log(SuiteStatus(status, metadata=suite.metadata))
+
+    def library_status(self, schedule, status):
+        self.log_obj.log(LibraryStatus(status,  metadata=schedule.metadata))
 
     def close(self):
         self.log_obj.close()

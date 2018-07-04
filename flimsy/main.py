@@ -1,24 +1,11 @@
-import itertools
-
+import runner
+import schedule
 import config
 import loader as loader_mod
 import fixture as fixture_mod
 import log
 import handlers
 
-# Test Phases:
-# * Test Collection
-#   * Test Parameterization (TODO Should this be moved to a separate step or kept here?)
-# * Fixture Parameterization
-# * Global Fixture Setup
-# * Iteratevely run suites:
-#    * Suite Fixture Setup
-#    * Iteratively run tests:
-#       * Test Fixture Setup
-#       * Run Test
-#       * Test Fixture Teardown
-#    * Suite Fixture Teardown
-# * Global Fixture Teardown
 
 class EntireTestCollection(object):
     name = 'Entire Test Collection'
@@ -58,36 +45,36 @@ def do_list():
         print(suite)
 
 def do_run():
+    '''
+    Test Phases
+    -----------
+    * Test Collection
+    * Fixture Parameterization
+    * Global Fixture Setup
+    * Iteratevely run suites:
+       * Suite Fixture Setup
+       * Iteratively run tests:
+          * Test Fixture Setup
+          * Run Test
+          * Test Fixture Teardown
+       * Suite Fixture Teardown
+    * Global Fixture Teardown
+    '''
+
     testloader = loader_mod.Loader()
     testloader.load_root(config.config.directory)
 
     # First pass through all the suites to create the test schedule object.
     test_schedule = filter_with_config_tags(testloader.suites)
 
-    # Iterate through all fixtures parameterizing them in order.
-    fixtures = tuple()
-    def extend_chain(*items):
-        global fixtures
-        fixtures = itertools.chain(*items)
+    # Iterate through all fixtures notifying them of the test schedule.
+    test_schedule = schedule.TestSchedule(test_schedule.suites, fixture_mod.global_fixtures)
+    for fixture in test_schedule.all_fixtures():
+        fixture.schedule_finalized(test_schedule)
 
-    for suite in test_schedule:
-        extend_chain(suite.fixtures)
-        for test in suite:
-            extend_chain(test.fixtures)
-    extend_chain(fixture_mod.global_fixtures)
-    for fixture in fixtures:
-        fixture.test_schedule = test_schedule
-
-    try:
-        for fixture in fixture_mod.global_fixtures:
-            fixture.setup(test_schedule)
-    except fixture_mod.SkipException as e:
-        print 'Skipping all suites, a global fixture raised a SkipException.'
-        print e.msg
-    else:
-        # Run all suites.
-        for suite in test_schedule:
-            suite.runner(suite).run()
+    # Build global fixtures and exectute scheduled test suites.
+    library_runner = runner.LibraryRunner(test_schedule)
+    library_runner.execute()
 
 def initialize_log(config):
 

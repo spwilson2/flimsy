@@ -1,3 +1,6 @@
+import traceback
+
+import log
 import helper
 
 global_fixtures = []
@@ -14,6 +17,13 @@ class SkipException(Exception):
         ) 
         super(SkipException, self).__init__(self.msg)
 
+class BrokenFixtureException(Exception):
+    def __init__(self, fixture, testitem, exception):
+        self.fixture = fixture
+        self.testitem = testitem
+        self.exception = exception
+        super(BrokenFixtureException, self).__init__()
+
 class Fixture(object):
     collector = helper.InstanceCollector()
 
@@ -26,27 +36,15 @@ class Fixture(object):
         name = kwargs.pop('name', None)
         if name is not None:
             self.name = name
-        self.__args = args
-        self.__kwargs = kwargs
-    
-    def __parameterize(self):
-        self.init(*self.__args, **self.__kwargs)
-    
-    @property
-    def test_schedule(self):
-        if self._test_schedule is None:
-            raise TestScheduleUnknown('The test schedule is not avaiable yet.')
-        return self._test_schedule
-
-    @test_schedule.setter
-    def test_schedule(self, schedule):
-        self._test_schedule = schedule
-        self.__parameterize()
-        
+        self.init(*args, **kwargs)
+            
     def skip(self, testitem):
         raise SkipException(self, testitem)
 
-    def init(self):
+    def schedule_finalized(self, schedule):
+        pass
+
+    def init(self, *args, **kwargs):
         pass
     
     def setup(self, testitem):
@@ -61,3 +59,33 @@ def globalfixture(fixture):
     will be called before the first test is executed.
     '''
     global_fixtures.append(fixture)
+
+class FixtureBuilder(object):
+    def __init__(self, fixtures):
+        self.fixtures = fixtures
+        self.built_fixtures = []
+
+    def setup(self, testitem):
+        for fixture in self.fixtures:
+            # Mark as built before, so if the build fails 
+            # we still try to tear it down.
+            self.built_fixtures.append(fixture)
+            try:
+                fixture.setup(testitem)
+            except SkipException:
+                raise
+            except Exception as e:
+                exc = traceback.format_exc()
+                msg = 'Exception raised while setting up fixture for %s' % testitem
+                log.test_log.warn('%s\n%s' % (exc, msg))
+                raise BrokenFixtureException(self, testitem, e)
+        
+    def teardown(self, testitem):
+        for fixture in self.built_fixtures:
+            try:
+                fixture.teardown(testitem)
+            except Exception:
+                # Log exception but keep cleaning up.
+                exc = traceback.format_exc()
+                msg = 'Exception raised while tearing down fixture for %s' % testitem
+                log.test_log.warn('%s\n%s' % (exc, msg))

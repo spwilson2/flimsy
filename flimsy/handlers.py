@@ -108,8 +108,12 @@ class SummaryHandler(log.Handler):
     def __init__(self):
         self.mapping = {
             log.TestStatus.type_id: self.handle_testresult,
+            log.LibraryStatus.type_id: self.handle_library_result,
         }
         self.results = []
+    
+    def handle_library_result(self, record):
+        pass
 
     def handle_testresult(self, record):
         if record.status != state.State.InProgress:
