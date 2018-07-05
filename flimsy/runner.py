@@ -79,7 +79,13 @@ class TestRunner(RunnerPattern):
 
     def handle_postbuild(self):
         log.test_log.test_status(self.test, self.suite, self.test.status)
+
+    def handle_broken_fixture(self, broken_fixture_exception):
+        self.test.status = state.State.Skipped
     
+    def handle_skip(self, skip_exception):
+        self.test.status = state.State.Skipped
+
     def sandbox_test(self):
         try:
             sandbox.Sandbox(TestParameters(self.test, self.suite))
@@ -100,7 +106,13 @@ class SuiteRunner(RunnerPattern):
         self.suite.status = compute_aggregate_result(
                 iter(self.suite)
         )
-        
+    
+    def handle_broken_fixture(self, broken_fixture_exception):
+        self.test.status = state.State.Skipped
+    
+    def handle_skip(self, skip_exception):
+        self.test.status = state.State.Skipped
+
     def handle_prebuild(self):
         log.test_log.suite_status(self.suite, state.State.InProgress)
 
@@ -116,13 +128,15 @@ class LibraryRunner(RunnerPattern):
         )
 
     def handle_broken_fixture(self, broken_fixture_exception):
-        exc = traceback.format_exc(e)
-        msg = 'Global Fixture %s failed to build. Skipping all tests.' % e.fixture
+        exc = traceback.format_exc(broken_fixture_exception)
+        msg = ('Global Fixture %s failed to build. Skipping all tests.' % 
+                broken_fixture_exception.fixture)
         log.test_log.error('%s\n%s' % (exc, msg))
     
     def handle_skip(self, skip_exception):
-        exc = traceback.format_exc(e)
-        msg = 'Global Fixture %s raised a SkipException, skipping all tests.' % e.fixture
+        exc = traceback.format_exc(skip_exception)
+        msg = ('Global Fixture %s raised a SkipException, skipping all tests.' 
+                % skip_exception.fixture)
         log.test_log.info('%s\n%s' % (exc, msg))
 
     def handle_prebuild(self):

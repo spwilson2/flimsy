@@ -55,12 +55,19 @@ class TestResult(object):
         self._result = value
 
 class SavedResults():
-    def __init__(self, results):
-        self.results = results
+    @staticmethod
+    def save(results, path, protocol=pickle.HIGHEST_PROTOCOL):
+        with open(path, 'w') as f:
+            pickle.dump(results, f, protocol)
 
+    @staticmethod
+    def load(path):
+        with open(path, 'w') as f:
+            return pickle.load(f)
 
 class ResultHandler(log.Handler):
-    def __init__(self):
+    def __init__(self, pickle_path):
+        self.pickle_path = pickle_path
         self.testresults = {}
         self.suiteresults = []
         self.mapping = {
@@ -92,8 +99,7 @@ class ResultHandler(log.Handler):
             self.testresults[record.uid].result = record.data
     
     def _save_results(self):
-        with open(config.previous_result_path, 'w') as f:
-            pickle.dump(SavedResults(self.suiteresults), f, config.constants.pickle_protocol)
+        SavedResults.save(self.suiteresults, self.pickle_path)
 
     def close(self):
         self._save_results()

@@ -1,5 +1,6 @@
 import functools
 
+import config
 import helper
 import runner as runner_mod
 import state
@@ -26,7 +27,7 @@ class TestCase(object):
         self.fixtures = list(self.fixtures)
         self.name = kwargs.pop('name', self.__class__.__name__)
         self.status = state.State.NotRun
-        self.path = __file__
+        self.path = config.config.file_under_load
 
         self.init(*args, **kwargs)
         self.uid = uid.uid(self)

@@ -1,4 +1,5 @@
 
+import config
 import helper
 import runner as runner_mod
 import state
@@ -33,7 +34,7 @@ class TestSuite(object):
         self.tests = kwargs.pop('tests', [])
         self.tags = set(kwargs.pop('tags', tuple()))
         self.status = state.State.NotRun
-        self.path = __file__
+        self.path = config.config.file_under_load
 
         self.init(*args, **kwargs)
         self.uid = uid.uid(self)

@@ -1,5 +1,7 @@
 import itertools
 
+import state
+
 class TestSchedule(object):
     def __init__(self, suites, global_fixtures=tuple()):
         # Query all fixtures that will be built
@@ -7,6 +9,7 @@ class TestSchedule(object):
         self.suites = suites
         self.global_fixtures = global_fixtures
         self.name = 'Entire Test Collection'
+        self.status = state.State.NotRun
     
     def all_fixtures(self):
         return itertools.chain(
@@ -19,7 +22,7 @@ class TestSchedule(object):
     
     @property
     def fixtures(self):
-        return self.all_fixtures()
+        return self.global_fixtures
     
     @property
     def metadata(self):

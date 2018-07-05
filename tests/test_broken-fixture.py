@@ -1,6 +1,6 @@
 import flimsy
 
-class BrokenFixtureException(Exception):
+class aBrokenFixtureException(Exception):
     pass
 
 def create_fixture(method):
@@ -17,15 +17,15 @@ def create_fixture(method):
 
 
 def _broken_method(*args, **kwargs):
-    raise BrokenFixtureException('Broken Fixture')
+    raise aBrokenFixtureException('Broken Fixture')
 
 class EmptyTestCase(flimsy.TestCase):
     def test(self, test_parameters):
         pass
 
 
-broken_teardown = EmptyTestCase(name='Broken Fixture Teardown')
-broken_teardown.fixtures.append(create_fixture('teardown'))
+# broken_teardown = EmptyTestCase(name='Broken Fixture Teardown')
+# broken_teardown.fixtures.append(create_fixture('teardown'))
 
 broken_setup = EmptyTestCase(name='Broken Fixture Setup')
 broken_setup.fixtures.append(create_fixture('setup'))

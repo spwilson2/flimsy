@@ -76,7 +76,7 @@ class FixtureBuilder(object):
                 raise
             except Exception as e:
                 exc = traceback.format_exc()
-                msg = 'Exception raised while setting up fixture for %s' % testitem
+                msg = 'Exception raised while setting up fixture for %s' % testitem.uid
                 log.test_log.warn('%s\n%s' % (exc, msg))
                 raise BrokenFixtureException(self, testitem, e)
         
@@ -87,5 +87,5 @@ class FixtureBuilder(object):
             except Exception:
                 # Log exception but keep cleaning up.
                 exc = traceback.format_exc()
-                msg = 'Exception raised while tearing down fixture for %s' % testitem
+                msg = 'Exception raised while tearing down fixture for %s' % testitem.uid
                 log.test_log.warn('%s\n%s' % (exc, msg))

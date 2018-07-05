@@ -50,6 +50,10 @@ class Loader(object):
 
     .. note:: If tests are not manually placed in a TestSuite, they will
         automatically be placed into one for the module.
+
+    .. warn:: This class is extremely thread-unsafe. 
+       It modifies the sys path and global config. 
+       Use with care.
     '''
     def __init__(self):
         self.suites = []
@@ -110,12 +114,14 @@ class Loader(object):
         sys.path.insert(0, os.path.dirname(path))
         cwd = os.getcwd()
         os.chdir(os.path.dirname(path))
+        config.config.file_under_load = path
 
         new_tests = test_mod.TestCase.collector.create()
         new_suites = suite_mod.TestSuite.collector.create()
         new_fixtures = fixture_mod.Fixture.collector.create()
 
-        def cleanup():
+        def cleanup():        
+            config.config.file_under_load = None
             sys.path[:] = old_path
             os.chdir(cwd)
             test_mod.TestCase.collector.remove(new_tests)
@@ -127,10 +133,10 @@ class Loader(object):
         try:
             execfile(path, newdict, newdict)
         except Exception as e:
-            log.test_log.warn('%s\n'
+            log.test_log.warn(
                               'Exception thrown while loading "%s"\n'
                               'Ignoring all tests in this file.'
-                               % (traceback.format_exc(), path))
+                               % (path))
             cleanup()
             return
 

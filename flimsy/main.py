@@ -42,7 +42,9 @@ def do_list():
     testloader = loader_mod.Loader()
     testloader.load_root(config.config.directory)
     for suite in filter_with_config_tags(testloader.suites):
-        print(suite)
+        print(suite.uid)
+        for test in suite:
+            print('\t%s' % test.uid)
 
 def do_run():
     '''
@@ -82,9 +84,9 @@ def initialize_log(config):
         stream=config.stream,
         verbosity=config.verbose+log.LogLevel.Info
     )
-    result_handler = handlers.ResultHandler()
+    result_handler = handlers.ResultHandler(config.previous_result_path)
     summary_handler = handlers.SummaryHandler()
-    mp_handler = handlers.MultiprocessingHandlerWrapper(result_handler, summary_handler, term_handler)
+    mp_handler = handlers.MultiprocessingHandlerWrapper(result_handler, term_handler, summary_handler)
     mp_handler.async_process()
     log.test_log.log_obj.add_handler(mp_handler)
 
