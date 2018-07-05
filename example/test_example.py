@@ -91,7 +91,6 @@ class ReadTempTest(flimsy.TestCase):
 suite.tests.append(WriteTempTest())
 suite.tests.append(ReadTempTest())
 
-
 # Unlike some test frameworks, fixtures are enumerated and initialized in two steps.
 # After all tests files have been enumerated and all tests have been parameterized, fixtures for each test scheduled to run will be notified of the test schedule by having their `schedule_finalized` method called.
 # Then the test execution phase begins. 

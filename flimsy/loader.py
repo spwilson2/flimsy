@@ -52,15 +52,27 @@ class Loader(object):
         automatically be placed into one for the module.
     '''
     def __init__(self):
-        # TODO Remove this monolithic loading style. 
-        # Allow the users to just load a single file at a time naturally 
-        # rather than creating a huge loader object.
         self.suites = []
-        self.tests = []
-        self.fixtures = []
-
         self.suite_uids = set()
         self.filepath_filter = default_filepath_filter
+    
+    def _verify_no_duplicate_suites(self, new_suites):
+        new_suite_uids = self.suite_uids.copy()
+        for suite in new_suites:
+            if suite.uid in new_suite_uids:
+                raise DuplicateTestItemException(
+                        "More than one suite with UID '%s' was defined" % suite.uid)
+            new_suite_uids.add(suite.uid)
+
+    def _verify_no_duplicate_tests_in_suites(self, new_suites):
+        for suite in new_suites:
+            test_uids = set()
+            for test in suite:
+                if test.uid in test_uids:
+                     raise DuplicateTestItemException(
+                            "More than one test with UID '%s' was defined in suite '%s'" 
+                            % (test.uid, suite.uid))
+                test_uids.add(test.uid)
 
     def load_root(self, root):
         '''
@@ -114,24 +126,13 @@ class Loader(object):
         
         try:
             execfile(path, newdict, newdict)
-
-            new_suite_uids = self.suite_uids.copy()
-            for suite in new_suites:
-                if suite.uid in new_suite_uids:
-                    raise DuplicateTestSuiteException(
-                            "More than one suite with UID '%s' was defined" % suite.uid)
-                new_suite_uids.add(suite.uid)
         except Exception as e:
-            log.test_log.warn('Exception thrown while loading "%s"\n\n'
-                            '%s' % (path, traceback.format_exc()))
+            log.test_log.warn('%s\n'
+                              'Exception thrown while loading "%s"\n'
+                              'Ignoring all tests in this file.'
+                               % (traceback.format_exc(), path))
             cleanup()
             return
-
-        self.tests.extend(new_tests)
-        self.suites.extend(new_suites)
-        for suite in new_suites:
-            self.suite_uids.add(suite.uid)
-        self.fixtures.extend(new_fixtures)
 
         # Create a module test suite for those not contained in a suite.
         orphan_tests = set(new_tests)
@@ -144,8 +145,19 @@ class Loader(object):
         if orphan_tests:
             orphan_tests = sorted(orphan_tests, key=new_tests.index)
             # Use the config based default to group all uncollected tests.
-            module_suite = config.defaultsuite(tests=orphan_tests, name=path_as_suitename(path))
-            self.suites.append(module_suite)
+            # NOTE: This is automatically collected (we still have the collector active.)
+            config.defaultsuite(tests=orphan_tests, name=path_as_suitename(path))
+
+        try:
+            self._verify_no_duplicate_suites(new_suites)
+            self._verify_no_duplicate_tests_in_suites(new_suites)
+        except DuplicateTestItemException as e:
+            log.test_log.warn('%s\n'
+                    'Exception thrown while loading "%s"\n'
+                    'Ignoring all tests in this file.'
+                    % (traceback.format_exc(), path))
+        else:
+            self.suites.extend(new_suites)
         cleanup()
 
     def _discover_files(self, root):
@@ -166,5 +178,5 @@ class Loader(object):
                     yield filepaths
 
 
-class DuplicateTestSuiteException(Exception):
+class DuplicateTestItemException(Exception):
     pass
