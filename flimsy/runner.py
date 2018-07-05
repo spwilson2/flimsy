@@ -50,8 +50,10 @@ class RunnerPattern(object):
         try:
             self.builder.setup(self.testitem)
         except fixture.SkipException as e:
+            self.testitem.status = state.State.Skipped
             self.handle_skip(e)
         except fixture.BrokenFixtureException as e:
+            self.testitem.status = state.State.Skipped
             self.handle_broken_fixture(e)
         else:
             self.handle_run()
@@ -80,12 +82,6 @@ class TestRunner(RunnerPattern):
     def handle_postbuild(self):
         log.test_log.test_status(self.test, self.suite, self.test.status)
 
-    def handle_broken_fixture(self, broken_fixture_exception):
-        self.test.status = state.State.Skipped
-    
-    def handle_skip(self, skip_exception):
-        self.test.status = state.State.Skipped
-
     def sandbox_test(self):
         try:
             sandbox.Sandbox(TestParameters(self.test, self.suite))
@@ -106,12 +102,6 @@ class SuiteRunner(RunnerPattern):
         self.suite.status = compute_aggregate_result(
                 iter(self.suite)
         )
-    
-    def handle_broken_fixture(self, broken_fixture_exception):
-        self.test.status = state.State.Skipped
-    
-    def handle_skip(self, skip_exception):
-        self.test.status = state.State.Skipped
 
     def handle_prebuild(self):
         log.test_log.suite_status(self.suite, state.State.InProgress)
