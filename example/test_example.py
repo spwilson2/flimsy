@@ -101,7 +101,6 @@ class BuildSystemFixture(flimsy.Fixture):
     targets = []
     def setup(self, testitem):
         import subprocess
-        fdsf
         if subprocess.call('make ' + ''.join(self.targets), shell='/bin/bash'):
             self.skip(testitem)
 

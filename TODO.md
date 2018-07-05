@@ -2,8 +2,7 @@
 
 In order of priority:
 
-
-- Fix saving results for suites with duplicate test names.
+- Disallow duplicate test uids in the same suite.
 - Add test, suite, library timing
 - Add some functional/unit tests for this library itself
 - Add documentation

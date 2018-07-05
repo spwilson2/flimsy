@@ -51,7 +51,12 @@ class StatusRecordMixin:
         return self.metadata['metadata'].name
 
 class TestStatus(Record, StatusRecordMixin):
-    pass
+    @property
+    def suite_uid(self):
+        return self.metadata['suite_uid']
+    @property
+    def test_uid(self):
+        return self.uid
 
 class TestStderr(Record, StatusRecordMixin):
     pass
@@ -270,17 +275,17 @@ class LogWrapper(object):
         self.message(message, LogLevel.Trace)
 
     # Ongoing Test Logging Methods
-    def test_stdout(self, test, buf):
-        self.log_obj.log(TestStdout(buf, metadata=test.metadata))
+    def test_stdout(self, test, suite, buf):
+        self.log_obj.log(TestStdout(buf, metadata=test.metadata, suite_uid=suite.uid))
 
-    def test_stderr(self, test, buf):
-        self.log_obj.log(TestStderr(buf, metadata=test.metadata))
+    def test_stderr(self, test, suite, buf):
+        self.log_obj.log(TestStderr(buf, metadata=test.metadata, suite_uid=suite.uid))
 
-    def test_message(self, test, message, level):
-        self.log_obj.log(TestMessage(message, uid=test.uid, level=level))
+    def test_message(self, test, suite, message, level):
+        self.log_obj.log(TestMessage(message, uid=test.uid, suite_uid=suite.uid, level=level))
 
-    def test_status(self, test, status):
-        self.log_obj.log(TestStatus(status, metadata=test.metadata))
+    def test_status(self, test, suite, status):
+        self.log_obj.log(TestStatus(status, suite_uid=suite.uid, metadata=test.metadata))
     
     def suite_status(self, suite, status):
         self.log_obj.log(SuiteStatus(status, metadata=suite.metadata))
@@ -292,13 +297,14 @@ class LogWrapper(object):
         self.log_obj.close()
 
 class TestLogWrapper(object):
-    def __init__(self, log, test):
+    def __init__(self, log, test, suite):
         self.log_obj = log
         self.test = test
+        self.suite = suite
 
     def test_message(self, message, level):
         #trace = find_caller()
-        self.log_obj.test_message(self.test, message, level)
+        self.log_obj.test_message(self.test, self.suite, message, level)
 
     def error(self, message):
         self.test_message(message, LogLevel.Error)

@@ -17,20 +17,25 @@ import state
 import uid
 
 
-def test_results_output_path(test_case):
+def test_results_output_path(test_uid, suite_uid):
     '''
     Return the path which results for a specific test case should be
     stored.
     '''
-    return os.path.join(config.result_path, test_case.uid.replace(os.path.pathsep,'-'))
+
+    return os.path.join(config.result_path, 
+                        suite_uid.replace(os.path.sep, '-'), 
+                        test_uid.replace(os.path.sep, '-'))
 
 class TestResult(object):
-    def __init__(self, test):
-        self.test = test
-        helper.mkdir_p(test_results_output_path(self.test))
+    def __init__(self, record):
+        self.record = record
+        helper.mkdir_p(test_results_output_path(record.uid, record.suite_uid))
 
-        self.stdout_fname = os.path.join(test_results_output_path(self.test), 'stdout')
-        self.stderr_fname = os.path.join(test_results_output_path(self.test), 'stderr')
+        self.stdout_fname = os.path.join(
+            test_results_output_path(record.uid, record.suite_uid), 'stdout')
+        self.stderr_fname = os.path.join(
+            test_results_output_path(record.uid, record.suite_uid), 'stderr')
 
         self.stdout = open(self.stdout_fname, 'w')
         self.stderr = open(self.stderr_fname, 'w')
@@ -60,7 +65,7 @@ class ResultHandler(log.Handler):
         self.suiteresults = []
         self.mapping = {
             log.SuiteStatus.type_id: self.handle_suiteresult,
-            log.TestStatus.type_id: self.handle_testresult,
+            log.TestStatus.type_id: self.handle_test_status,
             log.TestStderr.type_id: self.handle_stderr,
             log.TestStdout.type_id: self.handle_stdout,
         }
@@ -78,7 +83,7 @@ class ResultHandler(log.Handler):
     def handle_stdout(self, record):
         self.testresults[record.uid].write_stdout(record.data)
 
-    def handle_testresult(self, record):
+    def handle_test_status(self, record):
         if record.status == state.State.InProgress:
             # Create a new test result object for the test which is now in progress.
             self.testresults[record.uid] = TestResult(record)

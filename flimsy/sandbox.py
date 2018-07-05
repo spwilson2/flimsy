@@ -25,8 +25,9 @@ class ForkedPdb(pdb._Pdb):
 
 
 class IoManager(object):
-    def __init__(self, test):
+    def __init__(self, test, suite):
         self.test = test
+        self.suite = suite
         self.log = log.test_log
         self._init_pipes()
     
@@ -68,23 +69,26 @@ class IoManager(object):
         self.log_ouput()
 
     def log_ouput(self):
-        def _log_output(pipe, log):
+        def _log_output(pipe, log_callback):
             with os.fdopen(pipe, 'r') as pipe:
                 # Read iteractively, don't allow input to fill the pipe.
                 for line in iter(pipe.readline, ''):
-                    log(line)
+                    log_callback(line)
 
         # Don't keep a backpointer to self in the thread.            
         log = self.log
         test = self.test
+        suite = self.suite
 
         self.stdout_thread = threading.Thread(
                 target=_log_output,
-                args=(self.stdout_rp, lambda buf: log.test_stdout(test, buf))
+                args=(self.stdout_rp, 
+                      lambda buf: log.test_stdout(test, suite, buf))
         )
         self.stderr_thread = threading.Thread(
                 target=_log_output,
-                args=(self.stderr_rp, lambda buf: log.test_stderr(test, buf))
+                args=(self.stderr_rp, 
+                      lambda buf: log.test_stderr(test, suite, buf))
         )
         self.stdout_thread.start()
         self.stderr_thread.start()
@@ -132,11 +136,10 @@ class ExceptionProcess(multiprocessing.Process):
 
 
 class Sandbox(object):
-    def __init__(self, test, test_parameters):
+    def __init__(self, test_parameters):
 
-        self.test = test
         self.params = test_parameters
-        self.io_manager = IoManager(test)
+        self.io_manager = IoManager(self.params.test, self.params.suite)
 
         self.p = ExceptionProcess(target=self.entrypoint)
         self.io_manager.start_loggers()
@@ -151,4 +154,4 @@ class Sandbox(object):
 
     def entrypoint(self):
         self.io_manager.setup()
-        self.test.test(self.params)
+        self.params.test.test(self.params)

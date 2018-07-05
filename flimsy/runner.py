@@ -63,7 +63,7 @@ class TestParameters(object):
     def __init__(self, test, suite):
         self.test = test
         self.suite = suite
-        self.log = log.TestLogWrapper(log.test_log, test)
+        self.log = log.TestLogWrapper(log.test_log, test, suite)
 
 class TestRunner(RunnerPattern):
     def __init__(self, test, suite):
@@ -75,14 +75,14 @@ class TestRunner(RunnerPattern):
         self.sandbox_test()
 
     def handle_prebuild(self):
-        log.test_log.test_status(self.test, state.State.InProgress)
+        log.test_log.test_status(self.test, self.suite, state.State.InProgress)
 
     def handle_postbuild(self):
-        log.test_log.test_status(self.test, self.test.status)
+        log.test_log.test_status(self.test, self.suite, self.test.status)
     
     def sandbox_test(self):
         try:
-            sandbox.Sandbox(self.test, TestParameters(self.test, self.suite))
+            sandbox.Sandbox(TestParameters(self.test, self.suite))
         except sandbox.SubprocessException as e:
             self.test.status = state.State.Failed
         else:
