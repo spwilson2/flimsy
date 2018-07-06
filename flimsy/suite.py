@@ -9,12 +9,13 @@ import uid
 instances = []
 
 class TestSuiteMetadata():
-    def __init__(self, name, uid, tags, path, status):
+    def __init__(self, name, uid, tags, path, status, tests):
         self.name = name
         self.uid = uid
         self.tags = tags
         self.path = path
         self.status = status
+        self.tests = tests
 
 class TestSuite(object):
     #TODO Change to default if no runner set.
@@ -46,7 +47,8 @@ class TestSuite(object):
             'tags': self.tags,
             'status': self.status,
             'path': self.path,
-            'uid': self.uid
+            'uid': self.uid,
+            'tests': [test.metadata for test in self]
         })
 
     def init(self, *args, **kwargs):

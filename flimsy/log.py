@@ -275,17 +275,17 @@ class LogWrapper(object):
         self.message(message, LogLevel.Trace)
 
     # Ongoing Test Logging Methods
-    def test_stdout(self, test, suite, buf):
-        self.log_obj.log(TestStdout(buf, metadata=test.metadata, suite_uid=suite.uid))
-
-    def test_stderr(self, test, suite, buf):
-        self.log_obj.log(TestStderr(buf, metadata=test.metadata, suite_uid=suite.uid))
-
     def test_message(self, test, suite, message, level):
         self.log_obj.log(TestMessage(message, uid=test.uid, suite_uid=suite.uid, level=level))
 
+    def test_stdout(self, test, suite, buf):
+        self.log_obj.log(TestStdout(buf, test_uid=test.uid, suite_uid=suite.uid))
+
+    def test_stderr(self, test, suite, buf):
+        self.log_obj.log(TestStderr(buf, test_uid=test.uid, suite_uid=suite.uid))
+
     def test_status(self, test, suite, status):
-        self.log_obj.log(TestStatus(status, suite_uid=suite.uid, metadata=test.metadata))
+        self.log_obj.log(TestStatus(status, suite_uid=suite.uid, test_uid=test.uid, metadata=test.metadata))
     
     def suite_status(self, suite, status):
         self.log_obj.log(SuiteStatus(status, metadata=suite.metadata))

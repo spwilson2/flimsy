@@ -84,7 +84,7 @@ def initialize_log(config):
         stream=config.stream,
         verbosity=config.verbose+log.LogLevel.Info
     )
-    result_handler = handlers.ResultHandler(config.previous_result_path)
+    result_handler = handlers.ResultHandler(config.result_path)
     summary_handler = handlers.SummaryHandler()
     mp_handler = handlers.MultiprocessingHandlerWrapper(result_handler, term_handler, summary_handler)
     mp_handler.async_process()

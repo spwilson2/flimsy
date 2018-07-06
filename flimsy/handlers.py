@@ -13,66 +13,51 @@ import helper
 import log
 import terminal
 import test
+import result
 import state
 import uid
 
-
-def test_results_output_path(test_uid, suite_uid):
-    '''
-    Return the path which results for a specific test case should be
-    stored.
-    '''
-
-    return os.path.join(config.result_path, 
-                        suite_uid.replace(os.path.sep, '-'), 
-                        test_uid.replace(os.path.sep, '-'))
-
-class TestResult(object):
-    def __init__(self, record):
-        self.record = record
-        helper.mkdir_p(test_results_output_path(record.uid, record.suite_uid))
-
-        self.stdout_fname = os.path.join(
-            test_results_output_path(record.uid, record.suite_uid), 'stdout')
-        self.stderr_fname = os.path.join(
-            test_results_output_path(record.uid, record.suite_uid), 'stderr')
-
-        self.stdout = open(self.stdout_fname, 'w')
-        self.stderr = open(self.stderr_fname, 'w')
+class _TestStreamManager(object):
+    def __init__(self):
+        self._writers = {}
     
-    def write_stdout(self, buf):
-        self.stdout.write(buf)
+    def open_writer(self, test_result):
+        if test_result in self._writers:
+            raise ValueError('Cannot have multiple writters on a single test.')
+        self._writers[test_result] = _TestStreams(test_result.stdout, test_result.stderr)
     
-    def write_stderr(self, buf):
-        self.stderr.write(buf)
+    def get_writer(self, test_result):
+        if test_result not in self._writers:
+            self.open_writer(test_result)
+        return self._writers[test_result]
 
-    @property
-    def result(self):
-        return self._result
+    def close(self):
+        for writer in self._writers.values():
+            writer.close()
+        self._writers.clear()
 
-    @result.setter
-    def result(self, value):
-        self._result = value
+class _TestStreams(object):
+    def __init__(self, stdout, stderr):
+        helper.mkdir_p(os.path.dirname(stdout))
+        helper.mkdir_p(os.path.dirname(stderr))
+        self.stdout = open(stdout, 'w')
+        self.stderr = open(stderr, 'w')
 
-class SavedResults():
-    @staticmethod
-    def save(results, path, protocol=pickle.HIGHEST_PROTOCOL):
-        with open(path, 'w') as f:
-            pickle.dump(results, f, protocol)
-
-    @staticmethod
-    def load(path):
-        with open(path, 'w') as f:
-            return pickle.load(f)
+    def close(self):
+        self.stdout.close()
+        self.stderr.close()
 
 class ResultHandler(log.Handler):
-    def __init__(self, pickle_path):
-        self.pickle_path = pickle_path
-        self.testresults = {}
-        self.suiteresults = []
+    def __init__(self, directory):
+        self.directory = directory
+        self.internal_results = None
+        self.test_stream_manager = _TestStreamManager()
+
         self.mapping = {
-            log.SuiteStatus.type_id: self.handle_suiteresult,
+            log.LibraryStatus.type_id: self.handle_library_status,
+            log.SuiteStatus.type_id: self.handle_suite_status,
             log.TestStatus.type_id: self.handle_test_status,
+
             log.TestStderr.type_id: self.handle_stderr,
             log.TestStdout.type_id: self.handle_stdout,
         }
@@ -80,29 +65,44 @@ class ResultHandler(log.Handler):
     def handle(self, record):
         self.mapping.get(record.type_id, lambda _:None)(record)
 
-    def handle_suiteresult(self, record):
-        if record.status != state.State.InProgress:
-            self.suiteresults.append(record)
+    def handle_library_status(self, record):
+        if record.data == state.State.InProgress:
+            assert self.internal_results is None   # The library should only be set to in progress once.
+            self.internal_results = result.InternalLibraryResults(
+                    record.metadata['metadata'],
+                    self.directory
+            )
+        self.internal_results.result = record.data
 
-    def handle_stderr(self, record):
-        self.testresults[record.uid].write_stderr(record.data)
-
-    def handle_stdout(self, record):
-        self.testresults[record.uid].write_stdout(record.data)
+    def handle_suite_status(self, record):
+        self.internal_results.get_suite_result(record.uid).result = record.data
 
     def handle_test_status(self, record):
-        if record.status == state.State.InProgress:
-            # Create a new test result object for the test which is now in progress.
-            self.testresults[record.uid] = TestResult(record)
-        else:
-            # Update the given test's status
-            self.testresults[record.uid].result = record.data
-    
-    def _save_results(self):
-        SavedResults.save(self.suiteresults, self.pickle_path)
+        self._get_test_result(record).result = record.data
+
+    def handle_stderr(self, record):
+        self.test_stream_manager.get_writer(
+            self._get_test_result(record)
+        ).stderr.write(record.data)
+
+    def handle_stdout(self, record):
+        self.test_stream_manager.get_writer(
+            self._get_test_result(record)
+        ).stdout.write(record.data)
+
+    def _get_test_result(self, test_record):
+        return self.internal_results.get_test_result(
+                    test_record.metadata['test_uid'], 
+                    test_record.metadata['suite_uid'])
+
+    def _save(self):
+        #FIXME Hardcoded path name
+        result.InternalSavedResults.save(
+            self.internal_results, 
+            os.path.join(self.directory, 'results.pickle'))
 
     def close(self):
-        self._save_results()
+        self._save()
 
 
 class SummaryHandler(log.Handler):
@@ -200,7 +200,7 @@ class TerminalHandler(log.Handler):
         if record.status == state.State.InProgress:
             print('Running %s...' % record.name)
         else:
-            self._display_outcome(record.uid, record.status)
+            self._display_outcome(record.test_uid, record.status)
 
     def handle_suitestatus(self, record):
         if record.status == state.State.InProgress:

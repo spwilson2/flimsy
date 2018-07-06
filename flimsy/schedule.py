@@ -2,6 +2,12 @@ import itertools
 
 import state
 
+class TestScheduleMetadata(object):
+    def __init__(self, uid, name, suites):
+        self.uid = uid
+        self.name = name
+        self.suites = suites
+
 class TestSchedule(object):
     def __init__(self, suites, global_fixtures=tuple()):
         # Query all fixtures that will be built
@@ -26,10 +32,11 @@ class TestSchedule(object):
     
     @property
     def metadata(self):
-        return {
+        return TestScheduleMetadata( **{
             'uid': self.name,
             'name': self.name,
-        }
+            'suites': [suite.metadata for suite in self]
+        })
     
     def __iter__(self):
         return iter(self.suites)
