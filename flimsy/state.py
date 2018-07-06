@@ -9,3 +9,7 @@ class State():
 
     for idx, enum in enumerate(enums):
         locals()[enum] = idx
+        
+    @classmethod
+    def to_string(cls, enum):
+        return cls.enums[enum]

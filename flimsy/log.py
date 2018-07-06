@@ -8,6 +8,8 @@ import Queue
 import threading
 import multiprocessing
 
+
+import helper
 class LogLevel():
     Fatal = 0
     Error = 1
@@ -118,10 +120,6 @@ def find_caller():
         break
     return rv
 
-def _append_dictlist(dict_, key, value):
-    list_ = dict_.get(key, [])
-    list_.append(value)
-    dict_[key] = list
 
 class RecordFilter(object):
     def __init__(self):
@@ -153,7 +151,7 @@ class FilterContainer(object):
             if f.metadata_match is None:
                 unqualified_filters.append(f)
             else:
-                _append_dictlist(qualified_filters, f.metadata_match, f)
+                helper.append_dictlist(qualified_filters, f.metadata_match, f)
         
         self.qualified_filters = qualified_filters
         self.unqualified_filters = tuple(unqualified_filters)

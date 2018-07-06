@@ -30,6 +30,11 @@ class _TestStreamManager(object):
         if test_result not in self._writers:
             self.open_writer(test_result)
         return self._writers[test_result]
+    
+    def close_writer(self, test_result):
+        if test_result in self._writers:
+            writer = self._writers.pop(test_result)
+            writer.close()
 
     def close(self):
         for writer in self._writers.values():
@@ -78,7 +83,12 @@ class ResultHandler(log.Handler):
         self.internal_results.get_suite_result(record.uid).result = record.data
 
     def handle_test_status(self, record):
-        self._get_test_result(record).result = record.data
+        test_result = self._get_test_result(record)
+        if record.data == state.State.InProgress:
+            self.test_stream_manager.open_writer(test_result)
+        else:
+            self.test_stream_manager.close_writer(test_result)
+        test_result.result = record.data
 
     def handle_stderr(self, record):
         self.test_stream_manager.get_writer(
@@ -100,7 +110,9 @@ class ResultHandler(log.Handler):
         result.InternalSavedResults.save(
             self.internal_results, 
             os.path.join(self.directory, 'results.pickle'))
-
+        result.JUnitSavedResults.save(
+            self.internal_results, 
+            os.path.join(self.directory, 'results.xml'))
     def close(self):
         self._save()
 

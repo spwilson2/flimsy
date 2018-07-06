@@ -251,3 +251,8 @@ class InstanceCollector(object):
     def collect(self, instance):
         for col in self.collectors:
             col.append(instance)
+
+def append_dictlist(dict_, key, value):
+    list_ = dict_.get(key, [])
+    list_.append(value)
+    dict_[key] = list_
