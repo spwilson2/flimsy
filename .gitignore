@@ -2,4 +2,4 @@
 *.egg-info
 *.egg
 venv
-testing-results
+.testing-results

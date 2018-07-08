@@ -209,8 +209,8 @@ class TerminalHandler(log.Handler):
     }
     default = color.Normal
 
-    def __init__(self, stream=False, verbosity=log.LogLevel.Info):
-        self.stream = stream
+    def __init__(self, verbosity=log.LogLevel.Info):
+        self.stream = verbosity >= log.LogLevel.Trace
         self.verbosity = verbosity
         self.mapping = {            
             log.TestResult.type_id: self.handle_testresult,

@@ -119,7 +119,6 @@ def do_run():
 
     # Initialize early parts of the log.
     term_handler = handlers.TerminalHandler(
-        stream=config.config.stream,
         verbosity=config.config.verbose+log.LogLevel.Info
     )
     summary_handler = handlers.SummaryHandler()

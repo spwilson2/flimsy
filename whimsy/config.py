@@ -1,3 +1,31 @@
+# Copyright (c) 2017 Mark D. Hill and David A. Wood
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are
+# met: redistributions of source code must retain the above copyright
+# notice, this list of conditions and the following disclaimer;
+# redistributions in binary form must reproduce the above copyright
+# notice, this list of conditions and the following disclaimer in the
+# documentation and/or other materials provided with the distribution;
+# neither the name of the copyright holders nor the names of its
+# contributors may be used to endorse or promote products derived from
+# this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+# Authors: Sean Wilson
+
 '''
 Global configuration module which exposes two types of configuration
 variables:
@@ -14,12 +42,12 @@ A simple typo in a string can take a lot of debugging to uncover the issue,
 attribute errors are easier to notice and most autocompletion systems detect
 them.
 
-The config variable is initialzed by callling :func:`initialize_config`.
+The config variable is initialzed by calling :func:`initialize_config`.
 Before this point only ``constants`` will be availaible. This is to ensure
 that library function writers never accidentally get stale config attributes.
 
 Program arguments/flag arguments are available from the config as attributes.
-If a attribute was not set by the command line or the optional config file,
+If an attribute was not set by the command line or the optional config file,
 then it will fallback to the `_defaults` value, if still the value is not
 found an AttributeError will be raised.
 
@@ -41,7 +69,7 @@ import abc
 import argparse
 import copy
 import os
-import re
+from ConfigParser import ConfigParser
 from pickle import HIGHEST_PROTOCOL as highest_pickle_protocol
 
 from helper import absdirpath, AttrDict, FrozenAttrDict
@@ -59,7 +87,6 @@ def reset_for_module():
     defaultsuite = _defaultsuite
 
 
-
 class UninitialzedAttributeException(Exception):
     '''
     Signals that an attribute in the config file was not initialized.
@@ -72,11 +99,6 @@ class UninitializedConfigException(Exception):
     attribute.
     '''
     pass
-
-class _TagRegex(object):
-    def __init__(self, include, regex):
-        self.include = include
-        self.regex = re.compile(regex)
 
 class _Config(object):
     _initialized = False
@@ -168,6 +190,13 @@ class _Config(object):
                 raise UninitialzedAttributeException(
                     '%s was not initialzed in the config.' % attr)
 
+    def get_tags(self):
+        d = {typ: set(self.__getattr__(typ))
+            for typ in self.constants.supported_tags}
+        if any(map(lambda vals: bool(vals), d.values())):
+            return d
+        else:
+            return {}
 
 def define_defaults(defaults):
     '''
@@ -179,9 +208,8 @@ def define_defaults(defaults):
     defaults.base_dir = os.path.abspath(os.path.join(absdirpath(__file__),
                                                       os.pardir,
                                                       os.pardir))
-    defaults.result_path = os.path.join(os.getcwd(), 'testing-results')
-    defaults.previous_result_path = os.path.join(defaults.result_path, 'previous-results.pickle')
-    defaults.file_under_load = None
+    defaults.result_path = os.path.join(os.getcwd(), '.testing-results')
+    defaults.list_only_failed = False
 
 def define_constants(constants):
     '''
@@ -191,15 +219,73 @@ def define_constants(constants):
     a string can take a lot of debugging to uncover the issue, attribute errors
     are easier to notice and most autocompletion systems detect them.
     '''
+    constants.system_out_name = 'system-out'
+    constants.system_err_name = 'system-err'
+
+    constants.isa_tag_type = 'isa'
+    constants.x86_tag = 'X86'
+    constants.sparc_tag = 'SPARC'
+    constants.alpha_tag = 'ALPHA'
+    constants.riscv_tag = 'RISCV'
+    constants.arm_tag = 'ARM'
+    constants.mips_tag = 'MIPS'
+    constants.power_tag = 'POWER'
+    constants.null_tag = 'NULL'
+
+    constants.variant_tag_type = 'variant'
+    constants.opt_tag = 'opt'
+    constants.debug_tag = 'debug'
+    constants.fast_tag = 'fast'
+
+    constants.length_tag_type = 'length'
+    constants.quick_tag = 'quick'
+    constants.long_tag = 'long'
+
+    constants.supported_tags = {
+        constants.isa_tag_type : (
+            constants.x86_tag,
+            constants.sparc_tag,
+            constants.alpha_tag,
+            constants.riscv_tag,
+            constants.arm_tag,
+            constants.mips_tag,
+            constants.power_tag,
+            constants.null_tag,
+            ),
+        constants.variant_tag_type: (
+            constants.opt_tag,
+            constants.debug_tag,
+            constants.fast_tag,
+        ),
+        constants.length_tag_type: (
+            constants.quick_tag,
+            constants.long_tag,
+        ),
+    }
+
+    constants.supported_isas = constants.supported_tags['isa']
+    constants.supported_variants = constants.supported_tags['variant']
+    constants.supported_lengths = constants.supported_tags['length']
+
+    constants.tempdir_fixture_name = 'tempdir'
+    constants.gem5_simulation_stderr = 'simerr'
+    constants.gem5_simulation_stdout = 'simout'
+    constants.gem5_simulation_stats = 'stats.txt'
+    constants.gem5_simulation_config_ini = 'config.ini'
+    constants.gem5_simulation_config_json = 'config.json'
+    constants.gem5_returncode_fixture_name = 'gem5-returncode'
+    constants.gem5_binary_fixture_name = 'gem5'
     constants.pickle_protocol = highest_pickle_protocol
 
     # The root directory which all test names will be based off of.
     constants.testing_base = absdirpath(os.path.join(absdirpath(__file__),
                                                      os.pardir))
+    constants.credential_header = 'Credentials'
+    constants.default_credentials_file = os.path.join(os.getcwd(), 'credentials.ini')
 
 def define_post_processors(config):
     '''
-    post_processors are used to perform final configuration of variables. This is
+    post_processors are used to do final configuration of variables. This is
     useful if there is a dynamically set default, or some function that needs
     to be applied after parsing in order to set a configration value.
 
@@ -207,11 +293,68 @@ def define_post_processors(config):
     containing the already set config value or ``None`` if the config value
     has not been set to anything. They must return the modified value in the
     same format.
-    '''    
+    '''
+
+    def set_default_build_dir(build_dir):
+        '''
+        Post-processor to set the default build_dir based on the base_dir.
+
+        .. seealso :func:`~_Config._add_post_processor`
+        '''
+        if not build_dir or build_dir[0] is None:
+            base_dir = config._lookup_val('base_dir')[0]
+            build_dir = (os.path.join(base_dir, 'build'),)
+        return build_dir
+
     def fix_verbosity_hack(verbose):
-        if verbose:
-            return (verbose[0].val,)
-    
+        return (verbose[0].val,)
+
+    def threads_as_int(threads):
+        if threads is not None:
+            return (int(threads[0]),)
+
+    def test_threads_as_int(test_threads):
+        if test_threads is not None:
+            return (int(test_threads[0]),)
+
+    def parse_server_credentials(credentials_file):
+        if credentials_file is not None:
+            if credentials_file[0] is None:
+                credentials_file = (constants.default_credentials_file,)
+
+            parser = ConfigParser()
+            parser.read(credentials_file[0])
+            hostname = parser.get(constants.credential_header, 'hostname')
+            port = parser.get(constants.credential_header, 'port')
+            passkey = parser.get(constants.credential_header, 'passkey')
+            config._set('credentials', (hostname, int(port), passkey))
+            return credentials_file
+
+    def default_isa(isa):
+        if not isa[0]:
+            return [constants.supported_tags[constants.isa_tag_type]]
+        else:
+            return isa
+
+    def default_variant(variant):
+        if not variant[0]:
+            # Default variant is only opt. No need to run tests with multiple
+            # different compilation targets
+            return [[constants.opt_tag]]
+        else:
+            return variant
+
+    def default_length(length):
+        if not length[0]:
+            return [[constants.quick_tag]]
+        else:
+            return length
+
+    class _TagRegex(object):
+        def __init__(self, include, regex):
+            self.include = include
+            self.regex = re.compile(regex)
+
     def compile_tag_regex(positional_tags):
         if not positional_tags:
             return positional_tags
@@ -229,28 +372,16 @@ def define_post_processors(config):
                 new_positional_tags_list.append(tag_regex)
 
             return (new_positional_tags_list,)
-             
 
+    config._add_post_processor('build_dir', set_default_build_dir)
     config._add_post_processor('verbose', fix_verbosity_hack)
+    config._add_post_processor('isa', default_isa)
+    config._add_post_processor('variant', default_variant)
+    config._add_post_processor('length', default_length)
+    config._add_post_processor('threads', threads_as_int)
+    config._add_post_processor('test_threads', test_threads_as_int)
     config._add_post_processor(StorePositionalTagsAction.position_kword, 
                                compile_tag_regex)
-
-class StorePositionAction(argparse.Action):
-    '''Base class for classes wishing to create namespaces where 
-    arguments are stored in the order provided via the command line.
-    '''
-    position_kword = 'positional'
-
-    def __call__(self, parser, namespace, values, option_string=None):
-        if not self.position_kword in namespace:
-            setattr(namespace, self.position_kword, [])
-        previous = getattr(namespace, self.position_kword)
-        previous.append((self.dest, values))
-        setattr(namespace, self.position_kword, previous)
-
-class StorePositionalTagsAction(StorePositionAction):
-    position_kword = 'tag_filters'
-
 class Argument(object):
     '''
     Class represents a cli argument/flag for a argparse parser.
@@ -288,6 +419,7 @@ class Argument(object):
         '''Copy this argument so you might modify any of its kwargs.'''
         return copy.deepcopy(self)
 
+
 class _StickyInt:
     '''
     A class that is used to cheat the verbosity count incrementer by
@@ -306,6 +438,22 @@ class _StickyInt:
 
 common_args = NotImplemented
 
+class StorePositionAction(argparse.Action):
+    '''Base class for classes wishing to create namespaces where 
+    arguments are stored in the order provided via the command line.
+    '''
+    position_kword = 'positional'
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        if not self.position_kword in namespace:
+            setattr(namespace, self.position_kword, [])
+        previous = getattr(namespace, self.position_kword)
+        previous.append((self.dest, values))
+        setattr(namespace, self.position_kword, previous)
+        
+class StorePositionalTagsAction(StorePositionAction):
+    position_kword = 'tag_filters'
+
 def define_common_args(config):
     '''
     Common args are arguments which are likely to be simular between different
@@ -321,10 +469,10 @@ def define_common_args(config):
             nargs='?',
             default=os.getcwd(),
             help='Directory to start searching for tests in'),
-        # Argument(
-        #     '--fail-fast',
-        #     action='store_true',
-        #     help='Stop running on the first instance of failure'),
+        Argument(
+            '--fail-fast',
+            action='store_true',
+            help='Stop running on the first instance of failure'),
         Argument(
             '--exclude-tags',
             action=StorePositionalTagsAction,
@@ -334,17 +482,81 @@ def define_common_args(config):
             action=StorePositionalTagsAction,
             help='A tag comparison used to select tests.'),
         Argument(
-            '-s',
-            '--stream',
-            action='store_true',
-            default=False,
-            help='Stream the output from stdout and stderr as tests run.'),
+            '--isa',
+            action='append',
+            default=[],
+            help="Only tests that are valid with one of these ISAs. "
+                 "Comma separated."),
+        Argument(
+            '--variant',
+            action='append',
+            default=[],
+            help="Only tests that are valid with one of these binary variants"
+                 "(e.g., opt, debug). Comma separated."),
+        Argument(
+            '--length',
+            action='append',
+            default=[],
+            help="Only tests that are one of these lengths. Comma separated."),
+        Argument(
+            '--uid',
+            action='store',
+            default=None,
+            help='UID of a specific test item to run.'),
+        Argument(
+            '--build-dir',
+            action='store',
+            help='Build directory for SCons'),
+        Argument(
+            '--base-dir',
+            action='store',
+            default=config._defaults.base_dir,
+            help='Directory to change to in order to exec scons.'),
+        Argument(
+            '-j', '--threads',
+            action='store',
+            default=1,
+            help='Number of threads to run SCons with.'),
+        Argument(
+            '-t', '--test-threads',
+            action='store',
+            default=1,
+            help='Number of threads to spawn to run concurrent tests with.'),
         Argument(
             '-v',
             action='count',
             dest='verbose',
             default=_StickyInt(),
             help='Increase verbosity'),
+        Argument(
+            '-q',
+            action='store_true',
+            dest='quiet',
+            default=False,
+            help='Supress output (for piping, etc.)'),
+        Argument(
+            '--config-path',
+            action='store',
+            default=os.getcwd(),
+            help='Path to read a testing.ini config in'
+        ),
+        Argument(
+            '--skip-build',
+            action='store_true',
+            default=False,
+            help='Skip the building component of SCons targets.'
+        ),
+        Argument(
+            '--result-path',
+            action='store',
+            help='The path to store results in.'
+        ),
+        Argument(
+            '--list-only-failed',
+            action='store_true',
+            default=False,
+            help='Only list tests that failed.'
+        ),
     ]
 
     # NOTE: There is a limitation which arises due to this format. If you have
@@ -370,6 +582,7 @@ class ArgParser(object):
 
         # Argument will be added to all parsers and subparsers.
         common_args.verbose.add_to(parser)
+        common_args.quiet.add_to(parser)
 
 
 class CommandParser(ArgParser):
@@ -395,21 +608,30 @@ class RunParser(ArgParser):
 
         super(RunParser, self).__init__(parser)
 
+        common_args.uid.add_to(parser)
+        common_args.skip_build.add_to(parser)
         common_args.directory.add_to(parser)
-        common_args.stream.add_to(parser)
-        common_args.include_tags.add_to(parser)
-        common_args.exclude_tags.add_to(parser)
+        common_args.build_dir.add_to(parser)
+        common_args.base_dir.add_to(parser)
+        common_args.fail_fast.add_to(parser)
+        common_args.threads.add_to(parser)
+        common_args.test_threads.add_to(parser)
+        common_args.list_only_failed.add_to(parser)
+        common_args.isa.add_to(parser)
+        common_args.variant.add_to(parser)
+        common_args.length.add_to(parser)
+
 
 class ListParser(ArgParser):
     '''
-    Parser for the "list" command.
+    Parser for the \'list\' command.
     '''
     def __init__(self, subparser):
         parser = subparser.add_parser(
             'list',
-            help='''List/Query available tests'''
+            help='''List and query test metadata.'''
         )
-        super(ListParser, self).__init__(parser)    
+        super(ListParser, self).__init__(parser)
 
         Argument(
             '--suites',
@@ -424,6 +646,12 @@ class ListParser(ArgParser):
             help='List all test cases.'
         ).add_to(parser)
         Argument(
+            '--fixtures',
+            action='store_true',
+            default=False,
+            help='List all fixtures.'
+        ).add_to(parser)
+        Argument(
             '--all-tags',
             action='store_true',
             default=False,
@@ -431,8 +659,68 @@ class ListParser(ArgParser):
         ).add_to(parser)
 
         common_args.directory.add_to(parser)
-        common_args.include_tags.add_to(parser)
-        common_args.exclude_tags.add_to(parser)
+        common_args.isa.add_to(parser)
+        common_args.variant.add_to(parser)
+        common_args.length.add_to(parser)
+
+
+class RerunParser(ArgParser):
+    def __init__(self, subparser):
+        parser = subparser.add_parser(
+            'rerun',
+            help='''Rerun failed tests.'''
+        )
+        super(RerunParser, self).__init__(parser)
+
+        common_args.skip_build.add_to(parser)
+        common_args.directory.add_to(parser)
+        common_args.build_dir.add_to(parser)
+        common_args.base_dir.add_to(parser)
+        common_args.fail_fast.add_to(parser)
+        common_args.threads.add_to(parser)
+        common_args.test_threads.add_to(parser)
+        common_args.list_only_failed.add_to(parser)
+        common_args.isa.add_to(parser)
+        common_args.variant.add_to(parser)
+        common_args.length.add_to(parser)
+
+class ClientParser(ArgParser):
+    '''
+    Parser for the \'client\' command.
+    '''
+    def __init__(self, subparser):
+        parser = subparser.add_parser(
+            'client',
+            help='''Act as a client/helper for a test server instance.'''
+        )
+
+        super(ClientParser, self).__init__(parser)
+
+        common_args.credentials_file.add_to(parser)
+
+        arg = common_args.test_threads.copy()
+        arg.kwargs['help'] = ('The number of helper instances to spawn on'
+                              ' this client.')
+        arg.add_to(parser)
+
+class ClientParser(ArgParser):
+    '''
+    Parser for the \'client\' command.
+    '''
+    def __init__(self, subparser):
+        parser = subparser.add_parser(
+            'client',
+            help='''Act as a client/helper for a test server instance.'''
+        )
+
+        super(ClientParser, self).__init__(parser)
+
+        common_args.credentials_file.add_to(parser)
+
+        arg = common_args.test_threads.copy()
+        arg.kwargs['help'] = ('The number of helper instances to spawn on'
+                              ' this client.')
+        arg.add_to(parser)
 
 config = _Config()
 define_constants(config.constants)
@@ -461,8 +749,8 @@ def initialize_config():
     baseparser = CommandParser()
     runparser = RunParser(baseparser.subparser)
     listparser = ListParser(baseparser.subparser)
+    #TODO
     #rerunparser = RerunParser(baseparser.subparser)
-    #clientparser = ClientParser(baseparser.subparser)
 
     # Initialize the config by parsing args and running callbacks.
     config._init(baseparser)
