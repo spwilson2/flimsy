@@ -82,13 +82,23 @@ def do_list():
         verbosity=config.config.verbose+log.LogLevel.Info
     )
     log.test_log.log_obj.add_handler(term_handler)
-    qrunner = query.QueryRunner(load_tests().schedule)
+
+    test_schedule = load_tests().schedule
+    filter_with_config_tags(test_schedule)
+
+    qrunner = query.QueryRunner(test_schedule)
+
     if config.config.suites:
         qrunner.list_suites()
     elif config.config.tests:
         qrunner.list_tests()
     elif config.config.all_tags:
         qrunner.list_tags()
+    else:
+        qrunner.list_suites()
+        qrunner.list_tests()
+        qrunner.list_tags()
+
 
 def do_run():
     '''
@@ -120,7 +130,6 @@ def do_run():
     test_schedule = load_tests().schedule
 
     # Filter tests based on tags
-    # FIXME
     filter_with_config_tags(test_schedule)
 
     result_path =config.config.result_path

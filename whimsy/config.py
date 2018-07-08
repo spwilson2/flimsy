@@ -431,6 +431,8 @@ class ListParser(ArgParser):
         ).add_to(parser)
 
         common_args.directory.add_to(parser)
+        common_args.include_tags.add_to(parser)
+        common_args.exclude_tags.add_to(parser)
 
 config = _Config()
 define_constants(config.constants)
