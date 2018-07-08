@@ -5,6 +5,7 @@ import fixture as fixture_mod
 import log
 import handlers
 import terminal
+import query
 
 def filter_with_config_tags(loaded_library):
     tags = getattr(config.config, config.StorePositionalTagsAction.position_kword)
@@ -40,15 +41,18 @@ def load_tests():
     testloader.load_root(config.config.directory)
     return testloader
 
-def do_list():
-    testloader = loader_mod.Loader()
-    testloader.load_root(config.config.directory)
-    test_schedule = testloader.schedule
-    filter_with_config_tags(test_schedule)
-    for suite in test_schedule:
-        print(suite.uid)
-        for test in suite:
-            print('\t%s' % test.uid)
+def do_list():    
+    term_handler = handlers.TerminalHandler(
+        verbosity=config.config.verbose+log.LogLevel.Info
+    )
+    log.test_log.log_obj.add_handler(term_handler)
+    qrunner = query.QueryRunner(load_tests().schedule)
+    if config.config.suites:
+        qrunner.list_suites()
+    elif config.config.tests:
+        qrunner.list_tests()
+    elif config.config.all_tags:
+        qrunner.list_tags()
 
 def do_run():
     '''

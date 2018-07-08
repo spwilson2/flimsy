@@ -405,13 +405,28 @@ class ListParser(ArgParser):
             'list',
             help='''List/Query available tests'''
         )
+        super(ListParser, self).__init__(parser)    
 
-        super(ListParser, self).__init__(parser)
+        Argument(
+            '--suites',
+            action='store_true',
+            default=False,
+            help='List all test suites.'
+        ).add_to(parser)
+        Argument(
+            '--tests',
+            action='store_true',
+            default=False,
+            help='List all test cases.'
+        ).add_to(parser)
+        Argument(
+            '--all-tags',
+            action='store_true',
+            default=False,
+            help='List all tags.'
+        ).add_to(parser)
 
         common_args.directory.add_to(parser)
-        common_args.stream.add_to(parser)
-        common_args.include_tags.add_to(parser)
-        common_args.exclude_tags.add_to(parser)
 
 config = _Config()
 define_constants(config.constants)

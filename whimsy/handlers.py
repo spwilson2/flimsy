@@ -209,7 +209,7 @@ class TerminalHandler(log.Handler):
     }
     default = color.Normal
 
-    def __init__(self, stream, verbosity=log.LogLevel.Info):
+    def __init__(self, stream=False, verbosity=log.LogLevel.Info):
         self.stream = stream
         self.verbosity = verbosity
         self.mapping = {            
