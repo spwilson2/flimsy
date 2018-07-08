@@ -97,6 +97,7 @@ class TestRunner(RunnerPattern):
         else:
             self.testable.result = Result(Result.Passed)
 
+import threading
 class SuiteRunner(RunnerPattern):
     def test(self):
         for test in self.testable:
@@ -107,6 +108,24 @@ class SuiteRunner(RunnerPattern):
 
 class LibraryRunner(SuiteRunner):
     pass
+
+
+class LibraryParallelRunner(RunnerPattern):   
+    def _entrypoint(self, suite):
+        suite.runner(suite).run()
+
+    def test(self):
+        threads = []
+        for suite in self.testable:
+            thread = threading.Thread(target=self._entrypoint, args=(suite,))
+            thread.daemon = True
+            thread.start()
+            threads.append(thread)
+        for thread in threads:
+            thread.join()
+        self.testable.result = compute_aggregate_result(
+                iter(self.testable))
+
 
 class SkipException(Exception):
     def __init__(self, fixture, testitem):

@@ -17,6 +17,7 @@ class Test(flimsy.TestCase):
             self.name = 'TestPass' if value else 'TestFail'
 
     def test(self, test_parameters):
+        import time; time.sleep(.5)
         assert self.value
 
 # Create a parameterized version of the test

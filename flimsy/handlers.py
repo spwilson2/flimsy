@@ -289,7 +289,6 @@ class MultiprocessingHandlerWrapper(log.Handler):
         while not self._shutdown.is_set():
             try:
                 item = self.queue.get(timeout=0.1)
-                raise Exception()
                 self._handle(item)
             except (KeyboardInterrupt, SystemExit):
                 raise
