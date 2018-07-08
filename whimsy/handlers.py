@@ -18,6 +18,29 @@ import result
 import state
 import uid
 
+class Timer():
+    def __init__(self):
+        self.restart()
+
+    def restart(self):
+        self._start = self.timestamp()
+        self._stop = None
+
+    def stop(self):
+        self._stop = self.timestamp()
+        return self._stop - self._start
+
+    def runtime(self):
+        return self._stop - self._start
+
+    def active_time(self):
+        return self.timestamp() - self._start 
+
+    @staticmethod
+    def timestamp():
+        return time.time()
+
+
 class _TestStreamManager(object):
     def __init__(self):
         self._writers = {}
@@ -129,8 +152,14 @@ class SummaryHandler(log.Handler):
     def __init__(self):
         self.mapping = {
             log.TestResult.type_id: self.handle_testresult,
+            log.LibraryStatus.type_id: self.handle_library_status,
         }
+        self._timer = Timer()
         self.results = []
+    
+    def handle_library_status(self, record):
+        if record['status'] == state.Status.Building:
+            self._timer.restart()
 
     def handle_testresult(self, record):
         result = record['result'].value
@@ -165,8 +194,8 @@ class SummaryHandler(log.Handler):
             string = ' No testing done'
             most_severe_outcome = state.Result.Passed
         else:
-            string = ' Results:' + string
-        #string += ' in {time:.2} seconds '.format(time=self.timer.runtime())
+            string = ' Results:' + string + ' in {:.2} seconds '.format(
+                    self._timer.active_time())
         string += ' '
         return terminal.insert_separator(
                 string,
