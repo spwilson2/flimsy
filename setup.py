@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name = 'flimsy',
+    name = 'whimsy',
     version = '0.0.0-dev',
     author = 'Sean Wilson',
     author_email = 'spwilson2@wisc.edu',
@@ -9,7 +9,7 @@ setup(
     entry_points=
     '''
     [console_scripts]
-    flimsy=flimsy:main
+    whimsy=whimsy:main
     ''',
     #whimsy.main:main
     packages=find_packages(),
