@@ -5,61 +5,33 @@ import state
 import test as test_mod
 import log
 import sandbox
+from state import Status, Result
 
 def compute_aggregate_result(iterable):
     '''        
     Status of the test suite by default is:
     * Passed if all contained tests passed
-    * Failed if any contained tests failed
+    * Errored if any contained tests errored
+    * Failed if no tests errored, but one or more failed.
     * Skipped if all contained tests were skipped
-    * NotRun if all contained tests have not run
-    * Unknown if there is one or more tests NotRun and one or more are marked  either Passed or Skipped
     '''
-    passed = False
+    failed = []
+    skipped = []
     for testitem in iterable:
-        if testitem.status == state.State.Failed:
-            return testitem.status
-        passed |= testitem.status == state.State.Passed
-    if passed:
-        return state.State.Passed
+        result = testitem.result
+
+        if result.value == Result.Errored:
+            return Result(result.value, result.reason)
+        elif result.value == Result.Failed:
+            failed.append(result.reason)
+        elif result.value == result.Skipped:
+            skipped.append(result.reason)
+    if failed:
+        return Result(Result.Failed, failed)
+    elif skipped:
+        return Result(Result.Skipped, skipped)
     else:
-        return state.State.Skipped
-
-class RunnerPattern(object):
-    def __init__(self, testitem):
-        self.testitem = testitem
-        self.builder = fixture.FixtureBuilder(testitem.fixtures)
-    
-    def handle_run(self):
-        pass
-    
-    def handle_broken_fixture(self, broken_fixture_exception):
-        pass
-    
-    def handle_skip(self, skip_exception):
-        pass
-    
-    def handle_postbuild(self):
-        pass
-
-    def handle_prebuild(self):
-        pass
-    
-    def execute(self):
-        self.handle_prebuild()
-        try:
-            self.builder.setup(self.testitem)
-        except fixture.SkipException as e:
-            self.testitem.status = state.State.Skipped
-            self.handle_skip(e)
-        except fixture.BrokenFixtureException as e:
-            self.testitem.status = state.State.Skipped
-            self.handle_broken_fixture(e)
-        else:
-            self.handle_run()
-        finally:
-            self.builder.teardown(self.testitem)
-        self.handle_postbuild()
+        return Result(Result.Passed)
 
 class TestParameters(object):
     def __init__(self, test, suite):
@@ -67,70 +39,124 @@ class TestParameters(object):
         self.suite = suite
         self.log = log.TestLogWrapper(log.test_log, test, suite)
 
+class RunnerPattern:
+    def __init__(self, loaded_testable):
+        self.testable = loaded_testable
+        self.builder = FixtureBuilder(self.testable.fixtures) # TODO 
+
+    def handle_error(self, trace):
+        self.testable.result = Result(Result.Errored, trace)
+        self.avoid_children(trace)
+
+    def handle_skip(self, trace):
+        self.testable.result = Result(Result.Skipped, trace)
+        self.avoid_children(trace)
+    
+    def avoid_children(self, reason):
+        for testable in self.testable:
+            testable.result = Result(self.testable.result.value, reason)
+            testable.status = Status.Avoided
+
+    def test(self):
+        pass
+
+    def run(self):
+        avoided = False
+        try:
+            self.testable.status = Status.Building
+            self.builder.setup(self.testable)
+        except SkipException:
+            self.handle_skip(traceback.format_exc())
+            avoided = True
+        except BrokenFixtureException:
+            self.handle_error(traceback.format_exc())
+            avoided = True
+        else:
+            self.testable.status = Status.Running
+            self.test()
+        finally:
+            self.testable.status = Status.TearingDown
+            self.builder.teardown(self.testable)
+
+        if avoided:
+            self.testable.status = Status.Avoided
+        else:
+            self.testable.status = Status.Complete
+
 class TestRunner(RunnerPattern):
-    def __init__(self, test, suite):
-        RunnerPattern.__init__(self, test)
-        self.suite = suite
-        self.test = test
-
-    def handle_run(self):
+    def test(self):
         self.sandbox_test()
-
-    def handle_prebuild(self):
-        log.test_log.test_status(self.test, self.suite, state.State.InProgress)
-
-    def handle_postbuild(self):
-        log.test_log.test_status(self.test, self.suite, self.test.status)
 
     def sandbox_test(self):
         try:
-            sandbox.Sandbox(TestParameters(self.test, self.suite))
-        except sandbox.SubprocessException as e:
-            self.test.status = state.State.Failed
+            sandbox.Sandbox(TestParameters(
+                    self.testable, 
+                    self.testable.parent_suite))
+        except sandbox.SubprocessException:
+            self.testable.result = Result(Result.Failed, traceback.format_exc())
         else:
-            self.test.status = state.State.Passed
-
+            self.testable.result = Result(Result.Passed)
 
 class SuiteRunner(RunnerPattern):
-    def __init__(self, suite):
-        RunnerPattern.__init__(self, suite)
-        self.suite = suite
+    def test(self):
+        for test in self.testable:
+            test.runner(test).run()
+        self.testable.result = compute_aggregate_result(
+                iter(self.testable))
 
-    def handle_run(self):
-        for test in self.suite:
-            test.runner(test=test, suite=self.suite).execute()
-        self.suite.status = compute_aggregate_result(
-                iter(self.suite)
-        )
 
-    def handle_prebuild(self):
-        log.test_log.suite_status(self.suite, state.State.InProgress)
+class LibraryRunner(SuiteRunner):
+    pass
 
-    def handle_postbuild(self):
-        log.test_log.suite_status(self.suite, self.suite.status)
+class SkipException(Exception):
+    def __init__(self, fixture, testitem):
+        self.fixture = fixture
+        self.testitem = testitem
 
-class LibraryRunner(RunnerPattern):
-    def handle_run(self):
-        for suite in self.testitem.suites:
-            suite.runner(suite).execute()
-        self.testitem.status = compute_aggregate_result(
-                iter(self.testitem)
-        )
+        self.msg = 'Fixture "%s" raised SkipException for "%s".' % (
+               fixture.name, testitem.name
+        ) 
+        super(SkipException, self).__init__(self.msg)
 
-    def handle_broken_fixture(self, broken_fixture_exception):
-        exc = traceback.format_exc(broken_fixture_exception)
-        msg = ('Global Fixture %s failed to build. Skipping all tests.' % 
-                broken_fixture_exception.fixture)
-        log.test_log.error('%s\n%s' % (exc, msg))
-    
-    def handle_skip(self, skip_exception):
-        exc = traceback.format_exc(skip_exception)
-        msg = ('Global Fixture %s raised a SkipException, skipping all tests.' 
-                % skip_exception.fixture)
-        log.test_log.info('%s\n%s' % (exc, msg))
 
-    def handle_prebuild(self):
-        log.test_log.library_status(self.testitem, state.State.InProgress)
+class BrokenFixtureException(Exception):
+    def __init__(self, fixture, testitem, trace):
+        self.fixture = fixture
+        self.testitem = testitem
+        self.trace = trace
 
-    def handle_postbuild(self):
-        log.test_log.library_status(self.testitem, self.testitem.status)
+        self.msg = ('%s\n'
+                   'Exception raised building "%s" raised SkipException for "%s".' % 
+                   (trace, fixture.name, testitem.name)
+        ) 
+        super(BrokenFixtureException, self).__init__(self.msg)
+
+class FixtureBuilder(object):
+    def __init__(self, fixtures):
+        self.fixtures = fixtures
+        self.built_fixtures = []
+
+    def setup(self, testitem):
+        for fixture in self.fixtures:
+            # Mark as built before, so if the build fails 
+            # we still try to tear it down.
+            self.built_fixtures.append(fixture)
+            try:
+                fixture.setup(testitem)
+            except SkipException:
+                raise
+            except Exception as e:
+                exc = traceback.format_exc()
+                msg = 'Exception raised while setting up fixture for %s' % testitem.uid
+                log.test_log.warn('%s\n%s' % (exc, msg))
+                raise BrokenFixtureException(fixture, testitem, traceback.format_exc())
+        
+    def teardown(self, testitem):
+        for fixture in self.built_fixtures:
+            try:
+                fixture.teardown(testitem)
+            except Exception:
+                # Log exception but keep cleaning up.
+                exc = traceback.format_exc()
+                msg = 'Exception raised while tearing down fixture for %s' % testitem.uid
+                log.test_log.warn('%s\n%s' % (exc, msg))

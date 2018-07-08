@@ -2,13 +2,12 @@ import os
 
 import config
 
-def uid(testitem, class_name=None):
+def uid(testitem, filepath, class_name=None):
     '''
     The generic function used to produce uid of test objects.
     '''
     # Trim the file path to be the path relative to the parent of this
     # directory.
-    filepath = testitem.path
     filepath = os.path.relpath(filepath,
                                os.path.commonprefix((config.constants.testing_base,
                                                     filepath)))

@@ -5,6 +5,7 @@ import xml.sax.saxutils
 from config import config
 import helper
 import state
+import log
 
 def _create_uid_index(iterable):
     index = {}
@@ -23,15 +24,15 @@ class _CommonMetadataMixin:
         return self._metadata.uid
     @property
     def result(self):
-        return self._metadata.status
+        return self._metadata.result
     @result.setter
     def result(self, result):
-        self._metadata.status = result
+        self._metadata.result = result
 
 
 class InternalTestResult(object, _CommonMetadataMixin):
-    def __init__(self, metadata, suite, directory):
-        self._metadata = metadata
+    def __init__(self, obj, suite, directory):
+        self._metadata = obj.metadata
         self.suite = suite
     
         self.stderr = os.path.join(
@@ -45,15 +46,14 @@ class InternalTestResult(object, _CommonMetadataMixin):
 
 
 class InternalSuiteResult(object, _CommonMetadataMixin):
-    def __init__(self, metadata, directory):
-        self._metadata = metadata
+    def __init__(self, obj, directory):
+        self._metadata = obj.metadata
         self.directory = directory
-        self._wrap_tests()
+        self._wrap_tests(obj)
     
-    def _wrap_tests(self):
+    def _wrap_tests(self, obj):
         self._tests = [InternalTestResult(test, self, self.directory) 
-                       for test in self._metadata.tests]
-        del self._metadata.tests
+                       for test in obj]
         self._tests_index = _create_uid_index(self._tests)
     
     def get_test(self, uid):
@@ -68,23 +68,22 @@ class InternalSuiteResult(object, _CommonMetadataMixin):
     def aggregate_test_results(self):
         results = {}
         for test in self:
-            helper.append_dictlist(results, test.result, test)
+            helper.append_dictlist(results, test.result.value, test)
         return results
 
 
 class InternalLibraryResults(object, _CommonMetadataMixin):
-    def __init__(self, metadata, directory):
+    def __init__(self, obj, directory):
         self.directory = directory
-        self._metadata = metadata
-        self._wrap_suites()   
+        self._metadata = obj.metadata
+        self._wrap_suites(obj)   
 
     def __iter__(self):
         return iter(self._suites)
 
-    def _wrap_suites(self):
+    def _wrap_suites(self, obj):
         self._suites = [InternalSuiteResult(suite, self.directory) 
-                        for suite in self._metadata.suites]
-        del self._metadata.suites
+                        for suite in obj]
         self._suites_index = _create_uid_index(self._suites)
     
     def add_suite(self, suite):
@@ -102,7 +101,7 @@ class InternalLibraryResults(object, _CommonMetadataMixin):
         results = {}
         for suite in self._suites:
             for test in suite:
-                helper.append_dictlist(results, test.result, test)   
+                helper.append_dictlist(results, test.result.value, test)   
         return results
 
 class InternalSavedResults:
@@ -167,8 +166,9 @@ class XMLAttribute(object):
 class JUnitTestSuites(XMLElement):
     name = 'testsuites'
     result_map = {
-        state.State.Failed: 'failures',
-        state.State.Passed: 'tests'
+        state.Result.Errored: 'errors',
+        state.Result.Failed: 'failures',
+        state.Result.Passed: 'tests'
     }
 
     def __init__(self, internal_results):
@@ -188,9 +188,10 @@ class JUnitTestSuites(XMLElement):
 class JUnitTestSuite(JUnitTestSuites):
     name = 'testsuite'
     result_map = {
-        state.State.Failed: 'failures',
-        state.State.Passed: 'tests',
-        state.State.Skipped: 'skipped'
+        state.Result.Errored: 'errors',
+        state.Result.Failed: 'failures',
+        state.Result.Passed: 'tests',
+        state.Result.Skipped: 'skipped'
     }
 
     def __init__(self, suite_result):
@@ -215,7 +216,7 @@ class JUnitTestCase(XMLElement):
         self.attributes = [
             XMLAttribute('name', test_result.name),
             XMLAttribute('classname', test_result.uid), # TODO JUnit expects class of test.. add as test metadata.
-            XMLAttribute('status', state.State.to_string(test_result.result)),
+            XMLAttribute('status', str(test_result.result)),
         ]
 
         # TODO JUnit expects a message for the reason a test was 
@@ -233,9 +234,17 @@ class LargeFileElement(XMLElement):
         self.attributes = []
 
     def body(self, file_):
-        with open(self.filename, 'r') as f:
-            for line in f:
-                file_.write(xml.sax.saxutils.escape(line))
+        try:
+            with open(self.filename, 'r') as f:
+                for line in f:
+                    file_.write(xml.sax.saxutils.escape(line))
+        except IOError:
+            # TODO Better error logic, this is sometimes O.K. 
+            # if there was no stdout/stderr captured for the test
+            #
+            # TODO If that was the case, the file should still be made and it should just be empty instead of not existing.
+            log.test_log.debug('Error reading from %s' % self.filename)
+
 
 
 class JUnitSavedResults:

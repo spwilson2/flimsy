@@ -6,19 +6,7 @@ import state
 import test as test_mod
 import uid
 
-instances = []
-
-class TestSuiteMetadata():
-    def __init__(self, name, uid, tags, path, status, tests):
-        self.name = name
-        self.uid = uid
-        self.tags = tags
-        self.path = path
-        self.status = status
-        self.tests = tests
-
 class TestSuite(object):
-    #TODO Change to default if no runner set.
     runner = runner_mod.SuiteRunner
     collector = helper.InstanceCollector()
 
@@ -28,28 +16,11 @@ class TestSuite(object):
         return obj
 
     def __init__(self, *args, **kwargs):
-        name = kwargs.pop('name', None)
-        if name is not None:
-            self.name = name
-        self.fixtures = kwargs.pop('fixtures', [])
-        self.tests = kwargs.pop('tests', [])
-        self.tags = set(kwargs.pop('tags', tuple()))
-        self.status = state.State.NotRun
-        self.path = config.config.file_under_load
-
+        self.name = kwargs.pop('name', getattr(self, 'name', self.__class__.__name__))
+        self.fixtures = kwargs.pop('fixtures', getattr(self, 'fixtures', []))
+        self.tests = kwargs.pop('tests', getattr(self, 'tests', []))
+        self.tags = set(kwargs.pop('tags', []))
         self.init(*args, **kwargs)
-        self.uid = uid.uid(self)
-
-    @property
-    def metadata(self):
-        return TestSuiteMetadata( **{
-            'name': self.name,
-            'tags': self.tags,
-            'status': self.status,
-            'path': self.path,
-            'uid': self.uid,
-            'tests': [test.metadata for test in self]
-        })
 
     def init(self, *args, **kwargs):
         pass

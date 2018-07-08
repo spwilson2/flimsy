@@ -11,6 +11,8 @@ import suite as suite_mod
 import test as test_mod
 import fixture as fixture_mod
 
+import wrappers
+
 # Match filenames that either begin or end with 'test' or tests and use
 # - or _ to separate additional name components.
 default_filepath_regex = re.compile(r'(((.+[_])?tests?)|(tests?([-_].+)?))\.py$')
@@ -60,6 +62,10 @@ class Loader(object):
         self.suite_uids = set()
         self.filepath_filter = default_filepath_filter
     
+    @property
+    def schedule(self):
+        return wrappers.LoadedLibrary(self.suites, fixture_mod.global_fixtures)
+
     def _verify_no_duplicate_suites(self, new_suites):
         new_suite_uids = self.suite_uids.copy()
         for suite in new_suites:
@@ -133,6 +139,7 @@ class Loader(object):
         try:
             execfile(path, newdict, newdict)
         except Exception as e:
+            log.test_log.debug(traceback.format_exc())
             log.test_log.warn(
                               'Exception thrown while loading "%s"\n'
                               'Ignoring all tests in this file.'
@@ -154,16 +161,18 @@ class Loader(object):
             # NOTE: This is automatically collected (we still have the collector active.)
             config.defaultsuite(tests=orphan_tests, name=path_as_suitename(path))
 
+        loaded_suites =  [wrappers.LoadedSuite(suite, path) for suite in new_suites]
+
         try:
-            self._verify_no_duplicate_suites(new_suites)
-            self._verify_no_duplicate_tests_in_suites(new_suites)
+            self._verify_no_duplicate_suites(loaded_suites)
+            self._verify_no_duplicate_tests_in_suites(loaded_suites)
         except DuplicateTestItemException as e:
             log.test_log.warn('%s\n'
                     'Exception thrown while loading "%s"\n'
                     'Ignoring all tests in this file.'
                     % (traceback.format_exc(), path))
         else:
-            self.suites.extend(new_suites)
+            self.suites.extend(loaded_suites)
         cleanup()
 
     def _discover_files(self, root):

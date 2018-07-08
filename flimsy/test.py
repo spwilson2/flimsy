@@ -6,13 +6,6 @@ import runner as runner_mod
 import state
 import uid
 
-class TestCaseMetadata():
-    def __init__(self, name, uid, path, status):
-        self.name = name
-        self.uid = uid
-        self.path = path
-        self.status = status
-
 class TestCase(object):
     fixtures = tuple()
     runner = runner_mod.TestRunner
@@ -26,21 +19,8 @@ class TestCase(object):
     def __init__(self, *args, **kwargs):
         self.fixtures = list(self.fixtures)
         self.name = kwargs.pop('name', self.__class__.__name__)
-        self.status = state.State.NotRun
-        self.path = config.config.file_under_load
-
         self.init(*args, **kwargs)
-        self.uid = uid.uid(self)
 
-    @property
-    def metadata(self):
-        return TestCaseMetadata( **{
-            'name': self.name,
-            'path': self.path,
-            'uid': self.uid,
-            'status': self.status
-        })
-    
     def init(self, *args, **kwargs):
         pass
 

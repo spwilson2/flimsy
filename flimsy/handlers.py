@@ -7,6 +7,7 @@ import Queue
 import sys
 import threading
 import time
+import traceback
 
 from config import config
 import helper
@@ -53,15 +54,16 @@ class _TestStreams(object):
         self.stderr.close()
 
 class ResultHandler(log.Handler):
-    def __init__(self, directory):
+    def __init__(self, schedule, directory):
         self.directory = directory
-        self.internal_results = None
+        self.internal_results = result.InternalLibraryResults(schedule, directory)
         self.test_stream_manager = _TestStreamManager()
 
         self.mapping = {
             log.LibraryStatus.type_id: self.handle_library_status,
-            log.SuiteStatus.type_id: self.handle_suite_status,
-            log.TestStatus.type_id: self.handle_test_status,
+
+            log.SuiteResult.type_id: self.handle_suite_result,
+            log.TestResult.type_id: self.handle_test_result,
 
             log.TestStderr.type_id: self.handle_stderr,
             log.TestStdout.type_id: self.handle_stdout,
@@ -71,39 +73,32 @@ class ResultHandler(log.Handler):
         self.mapping.get(record.type_id, lambda _:None)(record)
 
     def handle_library_status(self, record):
-        if record.data == state.State.InProgress:
-            assert self.internal_results is None   # The library should only be set to in progress once.
-            self.internal_results = result.InternalLibraryResults(
-                    record.metadata['metadata'],
-                    self.directory
-            )
-        self.internal_results.result = record.data
+        if record['status'] in (state.Status.Complete, state.Status.Avoided):
+            self.test_stream_manager.close()
 
-    def handle_suite_status(self, record):
-        self.internal_results.get_suite_result(record.uid).result = record.data
+    def handle_suite_result(self, record):
+        suite_result = self.internal_results.get_suite_result(
+                    record['metadata'].uid)
+        suite_result.result = record['result']
 
-    def handle_test_status(self, record):
-        test_result = self._get_test_result(record)
-        if record.data == state.State.InProgress:
-            self.test_stream_manager.open_writer(test_result)
-        else:
-            self.test_stream_manager.close_writer(test_result)
-        test_result.result = record.data
+    def handle_test_result(self, record):
+        test_result = self._get_test_result(record)       
+        test_result.result = record['result']
 
     def handle_stderr(self, record):
         self.test_stream_manager.get_writer(
             self._get_test_result(record)
-        ).stderr.write(record.data)
+        ).stderr.write(record['buffer'])
 
     def handle_stdout(self, record):
         self.test_stream_manager.get_writer(
             self._get_test_result(record)
-        ).stdout.write(record.data)
+        ).stdout.write(record['buffer'])
 
     def _get_test_result(self, test_record):
         return self.internal_results.get_test_result(
-                    test_record.metadata['test_uid'], 
-                    test_record.metadata['suite_uid'])
+                    test_record['metadata'].uid, 
+                    test_record['metadata'].suite_uid)
 
     def _save(self):
         #FIXME Hardcoded path name
@@ -113,34 +108,34 @@ class ResultHandler(log.Handler):
         result.JUnitSavedResults.save(
             self.internal_results, 
             os.path.join(self.directory, 'results.xml'))
+
     def close(self):
         self._save()
 
 
+#TODO Change from a handler to an internal post processor so it can be used to reprint results
 class SummaryHandler(log.Handler):
     color = terminal.get_termcap()
     reset = color.Normal
     colormap = {
-            state.State.Failed: color.Red,
-            state.State.Passed: color.Green,
-            state.State.Skipped: color.Cyan,
+            state.Result.Errored: color.Red,
+            state.Result.Failed: color.Red,
+            state.Result.Passed: color.Green,
+            state.Result.Skipped: color.Cyan,
     }
     sep_fmtkey = 'separator'
     sep_fmtstr = '{%s}' % sep_fmtkey
 
     def __init__(self):
         self.mapping = {
-            log.TestStatus.type_id: self.handle_testresult,
-            log.LibraryStatus.type_id: self.handle_library_result,
+            log.TestResult.type_id: self.handle_testresult,
         }
         self.results = []
-    
-    def handle_library_result(self, record):
-        pass
 
     def handle_testresult(self, record):
-        if record.status != state.State.InProgress:
-            self.results.append(record)
+        result = record['result'].value
+        if result in (state.Result.Skipped, state.Result.Failed, state.Result.Passed, state.Result.Errored):
+            self.results.append(result)
 
     def handle(self, record):
         self.mapping.get(record.type_id, lambda _:None)(record)
@@ -153,22 +148,22 @@ class SummaryHandler(log.Handler):
         outcome_fmt = ' {count} {outcome}'
         strings = []
 
-        outcome_count = [0] * len(state.State.enums)
+        outcome_count = [0] * len(state.Result.enums)
         for result in self.results:
-            outcome_count[result.status] += 1
+            outcome_count[result] += 1
 
         # Iterate over enums so they are in order of severity
-        for outcome in state.State.enums:
-            outcome = getattr(state.State, outcome)
+        for outcome in state.Result.enums:
+            outcome = getattr(state.Result, outcome)
             count  = outcome_count[outcome]
             if count:
                 strings.append(outcome_fmt.format(count=count,
-                                                  outcome=state.State.enums[outcome]))
+                                                  outcome=state.Result.enums[outcome]))
                 most_severe_outcome = outcome
         string = ','.join(strings)
         if most_severe_outcome is None:
             string = ' No testing done'
-            most_severe_outcome = state.State.Passed
+            most_severe_outcome = state.Result.Passed
         #string += ' in {time:.2} seconds '.format(time=self.timer.runtime())
         string += ' '
         return terminal.insert_separator(
@@ -199,7 +194,7 @@ class TerminalHandler(log.Handler):
         print(SummaryHandler.colormap[outcome]
                  + name
                  + ' '
-                 + state.State.enums[outcome]
+                 + state.Result.enums[outcome]
                  + SummaryHandler.reset)
 
         if reason is not None:
@@ -209,38 +204,38 @@ class TerminalHandler(log.Handler):
             log.test_log.info(terminal.separator('-'))
     
     def handle_teststatus(self, record):
-        if record.status == state.State.InProgress:
-            print('Running %s...' % record.name)
-        else:
-            self._display_outcome(record.test_uid, record.status)
+        if record['status'] == state.Status.Running:
+            print('Running %s...' % record['metadata'].name)
+        elif record['status'] == state.Status.Complete:
+            self._display_outcome(record['metadata'].uid, record['metadata'].result.value)
 
     def handle_suitestatus(self, record):
-        if record.status == state.State.InProgress:
-            print('Running %s Test Suite...' % record.name)
-        else:
+        if record['status'] == state.Status.Running:
+            print('Running %s Test Suite...' % record['metadata'].name)
+        elif record['status'] == state.Status.Complete:
             print(terminal.separator('-'))
     
     def handle_stderr(self, record):
         if self.stream: 
-            print(record.data, file=sys.stderr, end='')
+            print(record.data['buffer'], file=sys.stderr, end='')
         
     def handle_stdout(self, record):
         if self.stream: 
-            print(record.data, file=sys.stdout, end='')
+            print(record.data['buffer'], file=sys.stdout, end='')
     
     def handle_testmessage(self, record):
         if self.stream: 
-            print(self._colorize(record.data, record.level))
+            print(self._colorize(record['message'], record['level']))
 
     def handle_librarymessage(self, record):
-        print(self._colorize(record.data, record.level))
+        print(self._colorize(record['message'], record['level']))
 
     def _colorize(self, message, level):
-        return self.verbosity_mapping.get(level, self.default) + \
-                message + self.default
+        return '%s%s%s' % (self.verbosity_mapping.get(level, self.default),
+                message, self.default)
 
     def handle(self, record):
-        if record.metadata.get('level', self.verbosity) > self.verbosity:
+        if record.data.get('level', self.verbosity) > self.verbosity:
             return
         self.mapping.get(record.type_id, lambda _:None)(record)
     
@@ -267,9 +262,24 @@ class MultiprocessingHandlerWrapper(log.Handler):
         # Create thread to spin handing recipt of messages
         # Create queue to push onto
         self.queue = multiprocessing.Queue()
+        self.queue.cancel_join_thread()
         self._shutdown = threading.Event()
-        self.subhandlers = subhandlers
+
+        # subhandlers should be accessed with the _handler_lock
+        self._handler_lock = threading.Lock()
+        self._subhandlers = subhandlers
     
+    def add_handler(self, handler):
+        self._handler_lock.acquire()
+        self._subhandlers = (handler, ) + self._subhandlers
+        self._handler_lock.release()
+    
+    def _with_handlers(self, callback):
+        self._handler_lock.acquire()
+        for handler in self._subhandlers:
+            callback(handler)
+        self._handler_lock.release()
+
     def async_process(self):
         self.thread = threading.Thread(target=self.process)
         self.thread.daemon = True
@@ -279,6 +289,7 @@ class MultiprocessingHandlerWrapper(log.Handler):
         while not self._shutdown.is_set():
             try:
                 item = self.queue.get(timeout=0.1)
+                raise Exception()
                 self._handle(item)
             except (KeyboardInterrupt, SystemExit):
                 raise
@@ -300,8 +311,7 @@ class MultiprocessingHandlerWrapper(log.Handler):
                 return
     
     def _handle(self, record):
-        for handler in self.subhandlers:
-            handler.handle(record)
+        self._with_handlers(lambda handler: handler.handle(record))
 
     def handle(self, record):
         self.queue.put(record)
@@ -310,7 +320,14 @@ class MultiprocessingHandlerWrapper(log.Handler):
         self._shutdown.set()
         if hasattr(self, 'thread'):
             self.thread.join()
-        self._drain()
+        _wrap(self._drain)
+        self._with_handlers(lambda handler: _wrap(handler.close))
+        # NOTE Python2 has an known bug which causes IOErrors to be raised
+        # if this shutdown doesn't go cleanly on both ends.
+        self.queue.close()
 
-        for handler in self.subhandlers: 
-            handler.close()
+def _wrap(callback, *args, **kwargs):
+    try:
+        callback(*args, **kwargs)
+    except:
+        traceback.print_exc()

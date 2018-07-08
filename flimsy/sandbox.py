@@ -90,6 +90,11 @@ class IoManager(object):
                 args=(self.stderr_rp, 
                       lambda buf: log.test_stderr(test, suite, buf))
         )
+
+        # Daemon + Join to not lock up main thread if something breaks 
+        # but provide consistent execution if nothing goes wrong.
+        self.stdout_thread.daemon = True
+        self.stderr_thread.daemon = True
         self.stdout_thread.start()
         self.stderr_thread.start()
     
@@ -142,6 +147,7 @@ class Sandbox(object):
         self.io_manager = IoManager(self.params.test, self.params.suite)
 
         self.p = ExceptionProcess(target=self.entrypoint)
+        self.p.daemon = True # Daemon + Join to not lock up main thread if something breaks
         self.io_manager.start_loggers()
         self.p.start()
         self.io_manager.close_parent_pipes()

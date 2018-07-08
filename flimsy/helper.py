@@ -26,8 +26,10 @@ import errno
 import subprocess
 import tempfile
 import os
-from threading import Thread
+import threading
+import Queue
 from collections import MutableSet, OrderedDict
+import traceback
 
 
 # lru_cache stuff (Introduced in python 3.2+)
@@ -256,3 +258,24 @@ def append_dictlist(dict_, key, value):
     list_ = dict_.get(key, [])
     list_.append(value)
     dict_[key] = list_
+
+
+
+class ExceptionThread(threading.Thread):
+    def __init__(self, *args, **kwargs):
+        threading.Thread.__init__(self, *args, **kwargs)
+        self._eq = Queue.Queue()
+    
+    def run(self, *args, **kwargs):
+        try:
+            threading.Thread.run(self, *args, **kwargs)
+            self._eq.put(None)
+        except:
+            tb = traceback.format_exc()
+            self._eq.put(tb)
+        
+    def join(self, *args, **kwargs):
+        threading.Thread.join(*args, **kwargs)
+        exception = self._eq.get()
+        if exception:
+            raise Exception(exception)

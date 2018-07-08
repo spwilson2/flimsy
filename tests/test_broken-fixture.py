@@ -29,3 +29,9 @@ broken_teardown.fixtures.append(create_fixture('teardown'))
 
 broken_setup = EmptyTestCase(name='Broken Fixture Setup')
 broken_setup.fixtures.append(create_fixture('setup'))
+
+
+class BrokenTestSuite(flimsy.TestSuite):
+    fixtures = [create_fixture('setup')]
+
+BrokenTestSuite(tests = [EmptyTestCase(name='Errored Test')])
