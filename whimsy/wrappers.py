@@ -133,6 +133,7 @@ class LoadedLibrary(LoadedTestable):
     def __init__(self, suites, global_fixtures):
         LoadedTestable.__init__(self, suites)
         self.global_fixtures = global_fixtures
+        self.suites = suites
 
     def _generate_metadata(self):
         return LibraryMetadata( **{

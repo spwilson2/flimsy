@@ -172,6 +172,8 @@ class Loader(object):
                     'Ignoring all tests in this file.'
                     % (traceback.format_exc(), path))
         else:
+            log.test_log.info('Discovered %d tests and %d suites in %s'
+                    '' % (len(new_tests), len(loaded_suites), path))
             self.suites.extend(loaded_suites)
         cleanup()
 

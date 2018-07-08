@@ -164,6 +164,8 @@ class SummaryHandler(log.Handler):
         if most_severe_outcome is None:
             string = ' No testing done'
             most_severe_outcome = state.Result.Passed
+        else:
+            string = ' Results:' + string
         #string += ' in {time:.2} seconds '.format(time=self.timer.runtime())
         string += ' '
         return terminal.insert_separator(
@@ -181,7 +183,8 @@ class TerminalHandler(log.Handler):
     def __init__(self, stream, verbosity=log.LogLevel.Info):
         self.stream = stream
         self.verbosity = verbosity
-        self.mapping = {
+        self.mapping = {            
+            log.TestResult.type_id: self.handle_testresult,
             log.SuiteStatus.type_id: self.handle_suitestatus,
             log.TestStatus.type_id: self.handle_teststatus,
             log.TestStderr.type_id: self.handle_stderr,
@@ -191,7 +194,8 @@ class TerminalHandler(log.Handler):
         }
 
     def _display_outcome(self, name, outcome, reason=None):
-        print(SummaryHandler.colormap[outcome]
+        print(self.color.Bold
+                 + SummaryHandler.colormap[outcome]
                  + name
                  + ' '
                  + state.Result.enums[outcome]
@@ -205,15 +209,16 @@ class TerminalHandler(log.Handler):
     
     def handle_teststatus(self, record):
         if record['status'] == state.Status.Running:
-            print('Running %s...' % record['metadata'].name)
-        elif record['status'] == state.Status.Complete:
-            self._display_outcome(record['metadata'].uid, record['metadata'].result.value)
+            log.test_log.debug('Starting Test Case: %s' % record['metadata'].name)
+
+    def handle_testresult(self, record):
+        self._display_outcome(
+            'Test: %s'  % record['metadata'].name, 
+            record['result'].value)
 
     def handle_suitestatus(self, record):
         if record['status'] == state.Status.Running:
-            print('Running %s Test Suite...' % record['metadata'].name)
-        elif record['status'] == state.Status.Complete:
-            print(terminal.separator('-'))
+              log.test_log.debug('Starting Test Suite: %s ' % record['metadata'].name)
     
     def handle_stderr(self, record):
         if self.stream: 
@@ -228,11 +233,14 @@ class TerminalHandler(log.Handler):
             print(self._colorize(record['message'], record['level']))
 
     def handle_librarymessage(self, record):
-        print(self._colorize(record['message'], record['level']))
+        print(self._colorize(record['message'], record['level'], record['bold']))
 
-    def _colorize(self, message, level):
-        return '%s%s%s' % (self.verbosity_mapping.get(level, self.default),
-                message, self.default)
+    def _colorize(self, message, level, bold=False):
+        return '%s%s%s%s' % (
+                self.color.Bold if bold else '',
+                self.verbosity_mapping.get(level, ''),
+                message, 
+                self.default)
 
     def handle(self, record):
         if record.data.get('level', self.verbosity) > self.verbosity:
@@ -275,10 +283,20 @@ class MultiprocessingHandlerWrapper(log.Handler):
         self._handler_lock.release()
     
     def _with_handlers(self, callback):
+        exception = None
         self._handler_lock.acquire()
         for handler in self._subhandlers:
-            callback(handler)
+            # Prevent deadlock when using this handler by delaying
+            # exception raise until we get a chance to unlock.
+            try:
+                callback(handler)
+            except Exception as e:
+                exception = e
+                break
         self._handler_lock.release()
+        
+        if exception is not None:
+            raise exception
 
     def async_process(self):
         self.thread = threading.Thread(target=self.process)
@@ -321,9 +339,14 @@ class MultiprocessingHandlerWrapper(log.Handler):
             self.thread.join()
         _wrap(self._drain)
         self._with_handlers(lambda handler: _wrap(handler.close))
+
         # NOTE Python2 has an known bug which causes IOErrors to be raised
         # if this shutdown doesn't go cleanly on both ends.
+        # This sleep adds some time for the sender threads on this process to 
+        # finish pickling the object and complete shutdown after the queue is closed.
+        time.sleep(.1)
         self.queue.close()
+        time.sleep(.1)
 
 def _wrap(callback, *args, **kwargs):
     try:
