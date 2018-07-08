@@ -12,21 +12,57 @@ def filter_with_config_tags(loaded_library):
     return filter_with_tags(loaded_library, tags)
 
 def filter_with_tags(loaded_library, filters):
+    '''
+    Filter logic supports two filter types:
+    --include-tags <regex>
+    --exclude-tags <regex>
+
+    The logic maintains a `set` of test suites. 
+
+    If the regex provided with the `--include-tags` flag matches a tag of a suite, that suite will added to the set.
+    If the regex provided with the `--exclude-tags` flag matches a tag of a suite, that suite will removed to the set.
+    Suites can be added and removed multiple times.
+
+    First Flag Special Case Logic:
+    If include is the first flag, start with an empty set of suites.
+    If exclude is the first flag, start with the set of all collected suites.
+
+
+    Let's trace out the set as we go through the flags to clarify::
+
+        # Say our collection of suites looks like this: set(suite_ARM64, suite_X86, suite_Other).
+        # Additionally, we've passed the flags in the following order: --include-tags "ARM64"  --exclude-tags ".*" --include-tags "X86"
+        
+        # Process --include-tags "ARM64"
+        set(suite_ARM64)    # Suite begins empty, but adds the ARM64 suite
+        # Process --exclude-tags ".*"
+        set()               # Removed all suites which have tags
+        # Process --include-tags "X86"
+        set(suite_X86)
+    '''
     if not filters:
         return
-    #FIXME logic seems to be broken.
-    def apply_tag_filter(include, regex, suite):
-        for tag in suite.tags:
-            if regex.search(tag):
-                return include
-        return not include
-    
-    remaining_suites = iter(loaded_library)
-    for include, regex in filters:
-        remaining_suites = (suite for suite in remaining_suites 
-                            if apply_tag_filter(include, regex, suite))
 
-    loaded_library.suites = list(remaining_suites)
+    query_runner = query.QueryRunner(loaded_library)
+    tags = query_runner.tags()
+
+    if not filters[0].include:
+        suites = set(query_runner.suites())
+    else:
+        suites = set()
+
+    def exclude(excludes):
+        return suites - excludes
+    def include(includes):
+        return suites | includes
+
+    for tag_regex in filters:
+        matched_tags = (tag for tag in tags if tag_regex.regex.search(tag))
+        for tag in matched_tags:
+            matched_suites = set(query_runner.suites_with_tag(tag))
+            suites = include(matched_suites) if tag_regex.include else exclude(matched_suites)
+
+    loaded_library.suites = list(suites)
 
 # TODO Add results command for listing previous results.
 # TODO Add rerun command to re-run failed tests.

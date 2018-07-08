@@ -73,6 +73,11 @@ class UninitializedConfigException(Exception):
     '''
     pass
 
+class _TagRegex(object):
+    def __init__(self, include, regex):
+        self.include = include
+        self.regex = re.compile(regex)
+
 class _Config(object):
     _initialized = False
 
@@ -216,13 +221,12 @@ def define_post_processors(config):
 
             for flag, regex in positional_tags:
                 if flag == 'exclude_tags':
-                    include = False
+                    tag_regex = _TagRegex(False, regex)
                 elif flag  == 'include_tags':
-                    include = True
+                    tag_regex = _TagRegex(True, regex)
                 else:
                     raise ValueError('Unsupported flag.')
-                regex = re.compile(regex)
-                new_positional_tags_list.append((include, regex))
+                new_positional_tags_list.append(tag_regex)
 
             return (new_positional_tags_list,)
              
