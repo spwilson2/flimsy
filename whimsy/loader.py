@@ -161,12 +161,11 @@ class Loader(object):
             # NOTE: This is automatically collected (we still have the collector active.)
             config.defaultsuite(tests=orphan_tests, name=path_as_suitename(path))
 
-        loaded_suites =  [wrappers.LoadedSuite(suite, path) for suite in new_suites]
-
         try:
+            loaded_suites = [wrappers.LoadedSuite(suite, path) for suite in new_suites]
             self._verify_no_duplicate_suites(loaded_suites)
             self._verify_no_duplicate_tests_in_suites(loaded_suites)
-        except DuplicateTestItemException as e:
+        except Exception as e:
             log.test_log.warn('%s\n'
                     'Exception thrown while loading "%s"\n'
                     'Ignoring all tests in this file.'

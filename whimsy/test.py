@@ -24,6 +24,16 @@ class TestCase(object):
     def init(self, *args, **kwargs):
         pass
 
+class TestFunction(TestCase):
+    def __init__(self, function, name=None, *args, **kwargs):
+        if name is None:
+            name = test.__name__
+        self.test_function = function
+        TestCase.__init__(self, name=name, *args, **kwargs)
+
+    def test(self, *args, **kwargs):
+        self.test_function(*args, **kwargs)
+
 # TODO Change the decorator to make this easier to create copy tests.
 # Good way to do so might be return by reference.
 def testfunction(f):
@@ -31,6 +41,18 @@ def testfunction(f):
     testcase.test = f
     return f
 
+def testfunction(function=None, name=None, fixtures=None):
+    '''
+    A decorator used to wrap a function as a TestFunction.
+    '''
+    def testfunctiondecorator(function):
+        '''Decorator used to mark a function as a test case.'''
+        TestFunction(function, name=name, fixtures=fixtures)
+        return function
+    if function is not None:
+        return testfunctiondecorator(function)
+    else:
+        return testfunctiondecorator
 class TestApplication(TestCase):
     def init(self, filename):
         # TODO Save current file being loaded path in order to properly resolve the filename path.

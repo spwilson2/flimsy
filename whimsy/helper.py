@@ -28,9 +28,70 @@ import tempfile
 import os
 import threading
 import Queue
+import re
+import shutil
+import stat
 from collections import MutableSet, OrderedDict
 import traceback
+import difflib
 
+
+def log_call(logger, command, *popenargs, **kwargs):
+    '''
+    Calls the given process and automatically logs the command and output.
+
+    If stdout or stderr are provided output will also be piped into those
+    streams as well.
+
+    :params stdout: Iterable of items to write to as we read from the
+        subprocess.
+
+    :params stderr: Iterable of items to write to as we read from the
+        subprocess.
+    '''
+    if isinstance(command, str):
+        cmdstr = command
+    else:
+        cmdstr = ' '.join(command)
+
+    logger_callback = logger.trace
+    logger.trace('Logging call to command: %s' % cmdstr)
+
+    stdout_redirect = kwargs.get('stdout', tuple())
+    stderr_redirect = kwargs.get('stderr', tuple())
+
+    if hasattr(stdout_redirect, 'write'):
+        stdout_redirect = (stdout_redirect,)
+    if hasattr(stderr_redirect, 'write'):
+        stderr_redirect = (stderr_redirect,)
+
+    kwargs['stdout'] = subprocess.PIPE
+    kwargs['stderr'] = subprocess.PIPE
+    p = subprocess.Popen(command, *popenargs, **kwargs)
+
+    def log_output(log_callback, pipe, redirects=tuple()):
+        # Read iteractively, don't allow input to fill the pipe.
+        for line in iter(pipe.readline, ''):
+            for r in redirects:
+                r.write(line)
+            log_callback(line.rstrip())
+
+    stdout_thread = threading.Thread(target=log_output,
+                           args=(logger_callback, p.stdout, stdout_redirect))
+    stdout_thread.setDaemon(True)
+    stderr_thread = threading.Thread(target=log_output,
+                           args=(logger_callback, p.stderr, stderr_redirect))
+    stderr_thread.setDaemon(True)
+
+    stdout_thread.start()
+    stderr_thread.start()
+
+    retval = p.wait()
+    stdout_thread.join()
+    stderr_thread.join()
+    # Return the return exit code of the process.
+    if retval != 0:
+        raise subprocess.CalledProcessError(retval, cmdstr)
 
 # lru_cache stuff (Introduced in python 3.2+)
 # Renamed and modified to cacheresult
@@ -279,3 +340,66 @@ class ExceptionThread(threading.Thread):
         exception = self._eq.get()
         if exception:
             raise Exception(exception)
+
+
+def _filter_file(fname, filters):
+    with open(fname, "r") as file_:
+        for line in file_:
+            for regex in filters:
+                if re.match(regex, line):
+                    break
+            else:
+                yield line
+
+
+def _copy_file_keep_perms(source, target):
+    '''Copy a file keeping the original permisions of the target.'''
+    st = os.stat(target)
+    shutil.copy2(source, target)
+    os.chown(target, st[stat.ST_UID], st[stat.ST_GID])
+
+
+def _filter_file_inplace(fname, filters):
+    '''
+    Filter the given file writing filtered lines out to a temporary file, then
+    copy that tempfile back into the original file.
+    '''
+    reenter = False
+    (_, tfname) = tempfile.mkstemp(text=True)
+    with open(tfname, 'w') as tempfile_:
+        for line in _filter_file(fname, filters):
+            tempfile_.write(line)
+
+    # Now filtered output is into tempfile_
+    _copy_file_keep_perms(tfname, fname)
+
+
+def diff_out_file(ref_file, out_file, logger, ignore_regexes=tuple()):
+    if not os.path.exists(ref_file):
+        raise OSError("%s doesn't exist in reference directory"\
+                                     % ref_file)
+    if not os.path.exists(out_file):
+        raise OSError("%s doesn't exist in output directory" % out_file)
+
+    _filter_file_inplace(out_file, ignore_regexes)
+    _filter_file_inplace(ref_file, ignore_regexes)
+
+    #try :
+    (_, tfname) = tempfile.mkstemp(text=True)
+    with open(tfname, 'r+') as tempfile_:
+        try:
+            log_call(logger, ['diff', out_file, ref_file], stdout=tempfile_)
+        except OSError:
+            # Likely signals that diff does not exist on this system. fallback
+            # to difflib
+            with open(out_file, 'r') as outf, open(ref_file, 'r') as reff:
+                diff = difflib.unified_diff(iter(reff.readline, ''),
+                                            iter(outf.readline, ''),
+                                            fromfile=ref_file,
+                                            tofile=out_file)
+                return ''.join(diff)
+        except subprocess.CalledProcessError:
+            tempfile_.seek(0)
+            return ''.join(tempfile_.readlines())
+        else:
+            return None
