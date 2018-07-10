@@ -1,11 +1,12 @@
-import runner
 import config
-import loader as loader_mod
 import fixture as fixture_mod
-import log
 import handlers
-import terminal
+import loader as loader_mod
+import log
 import query
+import runner
+import terminal
+
 
 def filter_with_config_tags(loaded_library):
     tags = getattr(config.config, config.StorePositionalTagsAction.position_kword)
@@ -77,7 +78,7 @@ def load_tests():
     testloader.load_root(config.config.directory)
     return testloader
 
-def do_list():    
+def do_list():
     term_handler = handlers.TerminalHandler(
         verbosity=config.config.verbose+log.LogLevel.Info
     )
@@ -131,7 +132,7 @@ def do_run():
     # Filter tests based on tags
     filter_with_config_tags(test_schedule)
 
-    result_path =config.config.result_path
+    result_path = config.config.result_path
     # Create the result handler object.
     result_handler = handlers.ResultHandler(test_schedule, result_path)
     mp_handler.add_handler(result_handler)
@@ -149,8 +150,12 @@ def do_run():
     # Build global fixtures and exectute scheduled test suites.
     library_runner = runner.LibraryRunner(test_schedule)
     library_runner.run()
+    result_handler.close()
 
 def main():
+    '''
+    Main entrypoint for the whimsy test library.
+    '''
     config.initialize_config()
 
     # 'do' the given command.

@@ -1,25 +1,34 @@
 # TODOs
 
+BUG:
+
+- If a fixture is added to a test, and that test is added to multiple suites then that same
+  fixture object will be setup and torn down multiple times. This is not the intended function
+  of fixtures and should be fixed.
+  
+  Suggested Solution:
+  
+  An additional step should be taken before .setup() to finalize the fixture version.
+  This could be done as the default action for schedule_finalized method.
+
 In order of priority:
 
+- Remove explicit dependency on runner in testsuite and testcase definitins, use the config
+  to set once loaded.
 - Have the log pre-check that all submitted items are pickleable (or have the MP handler do so)
 
-- Set Error/Skip status in suites on fixture fail/skip for global fixtures.
-- Runner logic is now convoluted
-  - the runner must be instantiated for each test/suite
-  - no clear definition of states (building, running, errored)
-
-- `list` command should also list tests under suites.
-- Only init necessary loggers for other commands like `list`.
 - Add `results` command to query/print previous test results
 - Add `rerun` command to re-run failed tests
 
-- Add test, suite, library timing
+- Add test and suite timing
 - Add complete support for JUnit output
   - Add test timing
   - Add Skip/Failure/Error reason
 - Add documentation
 - Add some functional/unit tests for this library itself
+
+- Replace the summary handler with a parser of the internal result object.
+- Formalize the record.type_id => handler interface with an additional handler base class.
 
 - Rework the Config
   - Initialization should be less "magic"

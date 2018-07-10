@@ -2,9 +2,15 @@ import os
 
 import config
 
+#TODO Change into a class, will simplify logic for passing TestClass results to the log.
+# (TestCases are uniquely identified by 'parent_suite.uid' and their own 'uid')
 def uid(testitem, filepath, class_name=None):
     '''
     The generic function used to produce uid of test objects.
+
+    :class:`TestSuite` objects defined within the same folder must have a unique
+    name in order to be unique. :class:`TestCase` objects defined within the
+    same test suite must have a unique name from all other tests in that suite.
     '''
     # Trim the file path to be the path relative to the parent of this
     # directory.

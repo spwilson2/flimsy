@@ -1,9 +1,8 @@
+import threading
 import traceback
 
 import helper
-import fixture
 import state
-import test as test_mod
 import log
 import sandbox
 from state import Status, Result
@@ -110,7 +109,7 @@ class TestRunner(RunnerPattern):
         else:
             self.testable.result = Result(Result.Passed)
 
-import threading
+
 class SuiteRunner(RunnerPattern):
     def test(self):
         for test in self.testable:
