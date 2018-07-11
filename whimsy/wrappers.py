@@ -105,12 +105,13 @@ class LoadedTest(LoadedTestable):
         return TestCaseMetadata( **{
             'name':self.obj.name,
             'path': self._path,
-            'uid': uid.uid(self.obj, self._path),
+            'uid': uid.TestUID(self._path, 
+                               self.obj.name, 
+                               self.parent_suite.name),
             'status': Status.Unscheduled,
             'result': Result(Result.NotRun),
             'suite_uid': self.parent_suite.metadata.uid
         })
-        # Fill out metadata with name, uid, path
     
 
 class LoadedSuite(LoadedTestable):
@@ -126,8 +127,8 @@ class LoadedSuite(LoadedTestable):
         return TestSuiteMetadata( **{
             'name': self.obj.name,
             'tags':self.obj.tags,
-            'path': self._path, # TODO Loader supply info?
-            'uid': uid.uid(self.obj, self._path), # TODO Requires path
+            'path': self._path,
+            'uid': uid.SuiteUID(self._path, self.obj.name),
             'status': Status.Unscheduled,
             'result': Result(Result.NotRun)
         })

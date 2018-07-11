@@ -1,14 +1,35 @@
+import os
+import itertools
+
 import config
 import fixture as fixture_mod
 import handlers
 import loader as loader_mod
 import log
 import query
+import result
 import runner
 import terminal
-import itertools
 
 
+class RunLogHandler():
+    def __init__(self):
+        term_handler = handlers.TerminalHandler(
+            verbosity=config.config.verbose+log.LogLevel.Info
+        )
+        summary_handler = handlers.SummaryHandler()
+        self.mp_handler = handlers.MultiprocessingHandlerWrapper(summary_handler, term_handler)
+        self.mp_handler.async_process()
+        log.test_log.log_obj.add_handler(self.mp_handler)
+    
+    def schedule_finalized(self, test_schedule):
+        # Create the result handler object.
+        self.result_handler = handlers.ResultHandler(
+                test_schedule, config.config.result_path)
+        self.mp_handler.add_handler(self.result_handler)
+    
+    def finish_testing(self):
+        self.result_handler.close()
 
 def filter_with_config_tags(loaded_library):
     tags = getattr(config.config, config.StorePositionalTagsAction.position_kword)
@@ -129,8 +150,7 @@ def do_list():
         qrunner.list_tests()
         qrunner.list_tags()
 
-
-def do_run():
+def run_schedule(test_schedule, log_handler):
     '''
     Test Phases
     -----------
@@ -147,24 +167,7 @@ def do_run():
     * Global Fixture Teardown
     '''
 
-    # Initialize early parts of the log.
-    term_handler = handlers.TerminalHandler(
-        verbosity=config.config.verbose+log.LogLevel.Info
-    )
-    summary_handler = handlers.SummaryHandler()
-    mp_handler = handlers.MultiprocessingHandlerWrapper(summary_handler, term_handler)
-    mp_handler.async_process()
-    log.test_log.log_obj.add_handler(mp_handler)
-
-    test_schedule = load_tests().schedule
-
-    # Filter tests based on tags
-    filter_with_config_tags(test_schedule)
-
-    result_path = config.config.result_path
-    # Create the result handler object.
-    result_handler = handlers.ResultHandler(test_schedule, result_path)
-    mp_handler.add_handler(result_handler)
+    log_handler.schedule_finalized(test_schedule)
 
     # Iterate through all fixtures notifying them of the test schedule.
     for fixture in test_schedule.all_fixtures():
@@ -173,7 +176,8 @@ def do_run():
     log.test_log.message(terminal.separator())
     log.test_log.message('Running Tests from {} suites'
             .format(len(test_schedule.suites)), bold=True)
-    log.test_log.message("Results will be stored in {}".format(result_path))
+    log.test_log.message("Results will be stored in {}".format(
+                config.config.result_path))
     log.test_log.message(terminal.separator())
 
     # Build global fixtures and exectute scheduled test suites.
@@ -183,7 +187,37 @@ def do_run():
     else:
         library_runner = runner.LibraryRunner(test_schedule)
     library_runner.run()
-    result_handler.close()
+
+    log_handler.finish_testing()
+
+def do_run():
+    # Initialize early parts of the log.
+    log_handler = RunLogHandler()
+    test_schedule = load_tests().schedule
+    # Filter tests based on tags
+    filter_with_config_tags(test_schedule)
+    # Execute the tests
+    run_schedule(test_schedule, log_handler)
+
+
+def do_rerun():
+    # Init early parts of log
+    log_handler = RunLogHandler()
+
+    # Load previous results
+    results = result.InternalSavedResults.load(
+            os.path.join(config.config.result_path,
+            config.constants.pickle_filename))
+    
+    rerun_suites = [suite.uid for suite in results if suite.unsucessful]
+
+    # Use loader to load suites
+    loader = loader_mod.Loader()
+    test_schedule = loader.load_schedule_for_suites(rerun_suites)
+
+    # Execute the tests
+    run_schedule(test_schedule, log_handler)
+
 
 def main():
     '''

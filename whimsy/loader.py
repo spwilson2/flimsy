@@ -47,8 +47,8 @@ import log
 import suite as suite_mod
 import test as test_mod
 import fixture as fixture_mod
-
 import wrappers
+import uid
 
 class DuplicateTestItemException(Exception):
     '''
@@ -110,12 +110,24 @@ class Loader(object):
     '''
     def __init__(self):
         self.suites = []
-        self.suite_uids = set()
+        self.suite_uids = {}
         self.filepath_filter = default_filepath_filter
+
+        # filepath -> Successful | Failed to load
+        self._files = {}
     
     @property
     def schedule(self):
         return wrappers.LoadedLibrary(self.suites, fixture_mod.global_fixtures)
+
+    def load_schedule_for_suites(self, uids):
+        files = {uid.UID.uid_to_path(id_) for id_ in uids}
+        for file_ in files:
+            self.load_file(file_)
+        
+        return wrappers.LoadedLibrary(
+                [self.suite_uids[id_] for id_ in uids], 
+                fixture_mod.global_fixtures)
 
     def _verify_no_duplicate_suites(self, new_suites):
         new_suite_uids = self.suite_uids.copy()
@@ -123,7 +135,7 @@ class Loader(object):
             if suite.uid in new_suite_uids:
                 raise DuplicateTestItemException(
                         "More than one suite with UID '%s' was defined" % suite.uid)
-            new_suite_uids.add(suite.uid)
+            new_suite_uids[suite.uid] = suite
 
     def _verify_no_duplicate_tests_in_suites(self, new_suites):
         for suite in new_suites:
@@ -157,6 +169,14 @@ class Loader(object):
 
     def load_file(self, path):
         path = os.path.abspath(path)
+
+        if path in self._files:
+            if not self._files[path]:
+                raise Exception('Attempted to load a file which already'
+                        ' failed to load')
+            else:
+                log.test_log.debug('Tried to reload: %s' % path)
+                return
 
         # Create a custom dictionary for the loaded module.
         newdict = {
@@ -225,6 +245,7 @@ class Loader(object):
             log.test_log.info('Discovered %d tests and %d suites in %s'
                     '' % (len(new_tests), len(loaded_suites), path))
             self.suites.extend(loaded_suites)
+            self.suite_uids.update({suite.uid: suite for suite in loaded_suites})
         cleanup()
 
     def _discover_files(self, root):

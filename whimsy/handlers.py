@@ -20,7 +20,7 @@ import state
 import test
 import terminal
 
-from config import config
+from config import config, constants
 
 
 class _TestStreamManager(object):
@@ -120,10 +120,10 @@ class ResultHandler(log.Handler):
         #FIXME Hardcoded path name
         result.InternalSavedResults.save(
             self.internal_results, 
-            os.path.join(self.directory, 'results.pickle'))
+            os.path.join(self.directory, constants.pickle_filename))
         result.JUnitSavedResults.save(
             self.internal_results, 
-            os.path.join(self.directory, 'results.xml'))
+            os.path.join(self.directory, constants.xml_filename))
 
     def close(self):
         if self._closed:

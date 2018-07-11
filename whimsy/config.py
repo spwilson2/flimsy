@@ -284,6 +284,8 @@ def define_constants(constants):
     constants.gem5_simulation_config_json = 'config.json'
     constants.gem5_returncode_fixture_name = 'gem5-returncode'
     constants.gem5_binary_fixture_name = 'gem5'
+    constants.xml_filename = 'results.xml'
+    constants.pickle_filename = 'results.pickle'
     constants.pickle_protocol = highest_pickle_protocol
 
     # The root directory which all test names will be based off of.
@@ -719,8 +721,7 @@ def initialize_config():
     baseparser = CommandParser()
     runparser = RunParser(baseparser.subparser)
     listparser = ListParser(baseparser.subparser)
-    #TODO
-    #rerunparser = RerunParser(baseparser.subparser)
+    rerunparser = RerunParser(baseparser.subparser)
 
     # Initialize the config by parsing args and running callbacks.
     config._init(baseparser)
