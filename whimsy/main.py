@@ -148,7 +148,11 @@ def do_run():
     log.test_log.message(terminal.separator())
 
     # Build global fixtures and exectute scheduled test suites.
-    library_runner = runner.LibraryRunner(test_schedule)
+    if config.config.test_threads > 1:
+        library_runner = runner.LibraryParallelRunner(test_schedule)
+        library_runner.set_threads(config.config.test_threads)
+    else:
+        library_runner = runner.LibraryRunner(test_schedule)
     library_runner.run()
     result_handler.close()
 
