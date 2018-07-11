@@ -70,22 +70,21 @@ import argparse
 import copy
 import os
 import re
+
 from ConfigParser import ConfigParser
 from pickle import HIGHEST_PROTOCOL as highest_pickle_protocol
 
 from helper import absdirpath, AttrDict, FrozenAttrDict
 
-
 # TODO/FIXME Reconcile module/test collection config items with the global config.
-import suite
-import argparse
+# import suite
 
-_defaultsuite = suite.TestSuite
-defaultsuite = _defaultsuite
+# _defaultsuite = suite.TestSuite
+# defaultsuite = _defaultsuite
 
-def reset_for_module():
-    global defaultsuite
-    defaultsuite = _defaultsuite
+# def reset_for_module():
+#     global defaultsuite
+#     defaultsuite = _defaultsuite
 
 
 class UninitialzedAttributeException(Exception):

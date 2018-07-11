@@ -32,7 +32,8 @@ def test_function(test_parameters):
     pass
 
 # Create tests using non-python related applications and checking return value.
-whimsy.test_application('Script Test', 'test.sh')
+#TODO
+#whimsy.test_application('Script Test', 'test.sh')
 
 #################
 # Test Suites

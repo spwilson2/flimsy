@@ -1,9 +1,46 @@
+'''
+Contains the :class:`Loader` which is responsible for discovering and loading
+tests.
+
+Loading typically follows the following stages.
+
+1. Recurse down a given directory looking for tests which match a given regex.
+
+    The default regex used will match any python file (ending in .py) that has
+    a name starting or ending in test(s). If there are any additional components
+    of the name they must be connected with '-' or '_'. Lastly, file names that
+    begin with '.' will be ignored.
+
+    The following names would match:
+
+    - `tests.py`
+    - `test.py`
+    - `test-this.py`
+    - `tests-that.py`
+    - `these-test.py`
+
+    These would not match:
+
+    - `.test.py`    - 'hidden' files are ignored.
+    - `test`        - Must end in '.py'
+    - `test-.py`    - Needs a character after the hypen.
+    - `testthis.py` - Needs a hypen or underscore to separate 'test' and 'this'
+
+
+2. With all files discovered execute each file gathering its test items we
+   care about collecting. (`TestCase`, `TestSuite` and `Fixture` objects.)
+
+As a final note, :class:`TestCase` instances which are not put into
+a :class:`TestSuite` by the test writer will be placed into
+a :class:`TestSuite` named after the module.
+
+.. seealso:: :func:`load_file`
+'''
+
 import os
 import re
 import sys
 import traceback
-
-import six
 
 import config
 import log
@@ -12,6 +49,14 @@ import test as test_mod
 import fixture as fixture_mod
 
 import wrappers
+
+class DuplicateTestItemException(Exception):
+    '''
+    Exception indicates multiple test items with the same UID 
+    were discovered.
+    '''
+    pass
+
 
 # Match filenames that either begin or end with 'test' or tests and use
 # - or _ to separate additional name components.
@@ -41,16 +86,22 @@ def _assert_files_in_same_dir(files):
                 assert os.path.dirname(f) == directory
 
 class Loader(object):
-    '''Class for discovering tests.
+    '''
+    Class for discovering tests.
+
+    Discovered :class:`TestCase` and :class:`TestSuite` objects are wrapped by
+    :class:`LoadedTest` and :class:`LoadedSuite` objects respectively. These objects
+    provided additional methods and metadata about the loaded objects and are the 
+    internal representation used by whimsy.
 
     To simply discover and load all tests using the default filter create an
     instance and `load_root`.
 
     >>> import os
-    >>> tl = TestLoader()
+    >>> tl = Loader()
     >>> tl.load_root(os.getcwd())
 
-    .. note:: If tests are not manually placed in a TestSuite, they will
+    .. note:: If tests are not contained in a TestSuite, they will
         automatically be placed into one for the module.
 
     .. warn:: This class is extremely thread-unsafe. 
@@ -134,7 +185,7 @@ class Loader(object):
             suite_mod.TestSuite.collector.remove(new_suites)
             fixture_mod.Fixture.collector.remove(new_fixtures)
 
-            config.reset_for_module()
+            # config.reset_for_module()
         
         try:
             execfile(path, newdict, newdict)
@@ -192,7 +243,3 @@ class Loader(object):
                 filepaths = filter(self.filepath_filter, filepaths)
                 if filepaths:
                     yield filepaths
-
-
-class DuplicateTestItemException(Exception):
-    pass

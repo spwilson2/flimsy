@@ -1,3 +1,7 @@
+'''
+Module contains wrappers for test items that have been 
+loaded by the whimsy :class:`whimsy.loader.Loader`.
+'''
 import itertools
 
 import log
@@ -32,6 +36,13 @@ class LibraryMetadata():
 
 
 class LoadedTestable(object):
+    '''
+    Base class for loaded test items.
+
+    :property:`result` and :property:`status` setters 
+    notify whimsy via the :func:`log_result` and :func:`log_status`
+    of the updated status.
+    '''
     def __init__(self, obj):
         self.obj = obj
         self.metadata = self._generate_metadata()
@@ -130,6 +141,10 @@ class LoadedSuite(LoadedTestable):
 
 
 class LoadedLibrary(LoadedTestable):
+    '''
+    Wraps a collection of all loaded test suites and 
+    provides utility functions for accessing fixtures.
+    '''
     def __init__(self, suites, global_fixtures):
         LoadedTestable.__init__(self, suites)
         self.global_fixtures = global_fixtures
@@ -142,9 +157,16 @@ class LoadedLibrary(LoadedTestable):
         })
     
     def __iter__(self):
+        '''
+        :returns: an iterator over contained :class:`TestSuite` objects.
+        '''
         return iter(self.obj)
 
     def all_fixtures(self):
+        '''
+        :returns: an interator overall all global, suite, 
+          and test fixtures
+        '''
         return itertools.chain(itertools.chain(
                 self.global_fixtures,
                 *(suite.fixtures for suite in self.obj)),
@@ -152,6 +174,10 @@ class LoadedLibrary(LoadedTestable):
         )
 
     def test_fixtures(self, suite):
+        '''
+        :returns: an interator over all fixtures of each 
+          test contained in the given suite
+        '''
         return itertools.chain(*(test.fixtures for test in suite))
     
     @property
