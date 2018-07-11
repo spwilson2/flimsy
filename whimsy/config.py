@@ -100,6 +100,15 @@ class UninitializedConfigException(Exception):
     '''
     pass
 
+class TagRegex(object):
+    def __init__(self, include, regex):
+        self.include = include
+        self.regex = re.compile(regex)
+    
+    def __str__(self):
+        type_ = 'Include' if self.include else 'Remove'
+        return '%10s: %s' % (type_, self.regex.pattern)
+
 class _Config(object):
     _initialized = False
 
@@ -350,11 +359,6 @@ def define_post_processors(config):
         else:
             return length
 
-    class _TagRegex(object):
-        def __init__(self, include, regex):
-            self.include = include
-            self.regex = re.compile(regex)
-
     def compile_tag_regex(positional_tags):
         if not positional_tags:
             return positional_tags
@@ -364,9 +368,9 @@ def define_post_processors(config):
 
             for flag, regex in positional_tags:
                 if flag == 'exclude_tags':
-                    tag_regex = _TagRegex(False, regex)
+                    tag_regex = TagRegex(False, regex)
                 elif flag  == 'include_tags':
-                    tag_regex = _TagRegex(True, regex)
+                    tag_regex = TagRegex(True, regex)
                 else:
                     raise ValueError('Unsupported flag.')
                 new_positional_tags_list.append(tag_regex)

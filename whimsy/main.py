@@ -6,11 +6,40 @@ import log
 import query
 import runner
 import terminal
+import itertools
+
 
 
 def filter_with_config_tags(loaded_library):
     tags = getattr(config.config, config.StorePositionalTagsAction.position_kword)
-    return filter_with_tags(loaded_library, tags)
+    final_tags = []
+
+    def _append_tag_filter(name):
+        cfg = config.config
+        regex_fmt = '^%s$'
+        if hasattr(cfg, name):
+            tag_opts = getattr(cfg, name)
+            for tag in tag_opts:
+                final_tags.append(config.TagRegex(True, regex_fmt % tag))
+            for tag in cfg.constants.supported_tags[name]:
+                if tag not in tag_opts:
+                    final_tags.append(config.TagRegex(False, regex_fmt % tag))
+
+    # Append additional tags for the isa, length, and variant options.
+    # They apply last (they take priority.)
+    _append_tag_filter(config.config.constants.isa_tag_type)
+    _append_tag_filter(config.config.constants.length_tag_type)
+    _append_tag_filter(config.config.constants.variant_tag_type)
+
+    if tags is None:
+        tags = tuple()
+
+    filters = list(itertools.chain(tags, final_tags))
+    string = 'Filtering suites with tags as follows:'
+    filter_string = '\n\t'.join((str(f) for f in filters)) 
+    log.test_log.trace(string + filter_string)
+
+    return filter_with_tags(loaded_library, filters)
 
 def filter_with_tags(loaded_library, filters):
     '''

@@ -208,9 +208,9 @@ class Loader(object):
                     orphan_tests.remove(test)
         if orphan_tests:
             orphan_tests = sorted(orphan_tests, key=new_tests.index)
-            # Use the config based default to group all uncollected tests.
+            # FIXME Use the config based default to group all uncollected tests.
             # NOTE: This is automatically collected (we still have the collector active.)
-            config.defaultsuite(tests=orphan_tests, name=path_as_suitename(path))
+            suite_mod.TestSuite(tests=orphan_tests, name=path_as_suitename(path))
 
         try:
             loaded_suites = [wrappers.LoadedSuite(suite, path) for suite in new_suites]
