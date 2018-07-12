@@ -11,10 +11,11 @@ class Test(whimsy.TestCase):
     # Instead of users needing to explicitly call super().__init__, init is passed the same arguments as __init__.
     # If name is passed as a keyword argument to __init__, it will be used as the name of the test. 
     # If not, the test will take the name of the class.
-    def init(self, value):
+    def __init__(self, value, **kwargs):
         self.value = value
-        if self.name == 'Test':
-            self.name = 'TestPass' if value else 'TestFail'
+        if 'name' not in kwargs:
+            kwargs['name']  = 'TestPass' if value else 'TestFail'
+        whimsy.TestCase.__init__(self, **kwargs)
 
     def test(self, test_parameters):
         assert self.value
@@ -106,7 +107,8 @@ class BuildSystemFixture(whimsy.Fixture):
 
 #whimsy.globalfixture(BuildSystemFixture(name='Make Build System'))
 class BuildTargetFixture(whimsy.Fixture):
-    def init(self, target):
+    def __init__(self, target, **kwargs):
+        whimsy.Fixture.__init__(self, **kwargs)
         BuildSystemFixture.targets.append(target)
         self.target = target
 # In the above we create a BuildTargetFixture and a global BuildSystemTarget.

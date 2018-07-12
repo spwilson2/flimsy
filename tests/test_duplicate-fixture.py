@@ -2,8 +2,9 @@ import whimsy
 
 
 class DetectDuplicateFixture(whimsy.Fixture):
-    def init(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         self.__setup = False
+        whimsy.Fixture.__init__(self, *args, **kwargs)
 
     def setup(self, testitem):
         if self.__setup:
