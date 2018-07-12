@@ -277,7 +277,7 @@ class LargeFileElement(XMLElement):
             # if there was no stdout/stderr captured for the test
             #
             # TODO If that was the case, the file should still be made and it should just be empty instead of not existing.
-            log.test_log.trace('Error reading from %s' % self.filename)
+            pass
 
 
 
