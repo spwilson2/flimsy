@@ -18,7 +18,6 @@ In order of priority:
 - Have the log pre-check that all submitted items are pickleable (or have the MP handler do so)
 
 - Add `results` command to query/print previous test results
-- Add `rerun` command to re-run failed tests
 
 - Add test and suite timing
 - Add complete support for JUnit output
@@ -34,4 +33,3 @@ In order of priority:
   - Initialization should be less "magic"
   - Add a plugin interface (so the library doesn't need to be modified)
 - Catch duplicate UIDs on instantiation rather than loading (so it's easier to debug the source of the issue.)
-- Add a multiprocessing TestSuite runner

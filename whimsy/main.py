@@ -31,26 +31,38 @@ class RunLogHandler():
     def finish_testing(self):
         self.result_handler.close()
 
+
 def filter_with_config_tags(loaded_library):
     tags = getattr(config.config, config.StorePositionalTagsAction.position_kword)
     final_tags = []
+    regex_fmt = '^%s$'
+    cfg = config.config
 
-    def _append_tag_filter(name):
-        cfg = config.config
-        regex_fmt = '^%s$'
+    def _append_inc_tag_filter(name):
         if hasattr(cfg, name):
             tag_opts = getattr(cfg, name)
             for tag in tag_opts:
                 final_tags.append(config.TagRegex(True, regex_fmt % tag))
+
+    def _append_rem_tag_filter(name):
+        if hasattr(cfg, name):
+            tag_opts = getattr(cfg, name)
             for tag in cfg.constants.supported_tags[name]:
                 if tag not in tag_opts:
                     final_tags.append(config.TagRegex(False, regex_fmt % tag))
 
     # Append additional tags for the isa, length, and variant options.
-    # They apply last (they take priority.)
-    _append_tag_filter(config.config.constants.isa_tag_type)
-    _append_tag_filter(config.config.constants.length_tag_type)
-    _append_tag_filter(config.config.constants.variant_tag_type)
+    # They apply last (they take priority)
+    special_tags = (
+        cfg.constants.isa_tag_type,
+        cfg.constants.length_tag_type,
+        cfg.constants.variant_tag_type
+    )
+
+    for tagname in special_tags:
+        _append_inc_tag_filter(tagname)
+    for tagname in special_tags:
+        _append_rem_tag_filter(tagname)
 
     if tags is None:
         tags = tuple()
@@ -61,6 +73,7 @@ def filter_with_config_tags(loaded_library):
     log.test_log.trace(string + filter_string)
 
     return filter_with_tags(loaded_library, filters)
+
 
 def filter_with_tags(loaded_library, filters):
     '''
@@ -106,17 +119,17 @@ def filter_with_tags(loaded_library, filters):
         return suites - excludes
     def include(includes):
         return suites | includes
-
+        
     for tag_regex in filters:
         matched_tags = (tag for tag in tags if tag_regex.regex.search(tag))
         for tag in matched_tags:
             matched_suites = set(query_runner.suites_with_tag(tag))
             suites = include(matched_suites) if tag_regex.include else exclude(matched_suites)
 
-    loaded_library.suites = list(suites)
+    # Set the library's suites to only those which where accepted by our filter
+    loaded_library.suites = [suite for suite in loaded_library.suites if suite in suites]
 
 # TODO Add results command for listing previous results.
-# TODO Add rerun command to re-run failed tests.
 
 def load_tests():
     '''
