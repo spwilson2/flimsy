@@ -1,17 +1,8 @@
 # TODOs
 
-BUG:
-
-- If a fixture is added to a test, and that test is added to multiple suites then that same
-  fixture object will be setup and torn down multiple times. This is not the intended function
-  of fixtures and should be fixed.
-  
-  Suggested Solution:
-  
-  An additional step should be taken before .setup() to finalize the fixture version.
-  This could be done as the default action for schedule_finalized method.
-
 In order of priority:
+
+- Remove the init helper it's more confusing than it's worth.
 
 - Remove explicit dependency on runner in testsuite and testcase definitins, use the config
   to set once loaded.
