@@ -24,3 +24,7 @@ In order of priority:
   - Initialization should be less "magic"
   - Add a plugin interface (so the library doesn't need to be modified)
 - Catch duplicate UIDs on instantiation rather than loading (so it's easier to debug the source of the issue.)
+
+
+- Global fixtures should only be addable in a certain file location - like a plugin file this way you don't accidentally
+  create an obscene amount of global fixtures and are unable to trace their origin.

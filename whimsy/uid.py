@@ -65,7 +65,7 @@ class UID(object):
     def from_uid(cls, uid):
         args = uid.split(cls.sep)
         del args[cls.type_idx]
-        return cls._uid_to_class(uid)(*args)
+        return cls.uid_to_class(uid)(*args)
 
     def __str__(self):
         common_opts = {
