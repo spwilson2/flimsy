@@ -151,9 +151,18 @@ def do_run():
     library_runner = runner.LibraryRunner(test_schedule)
     library_runner.run()
 
+
 def main():
     config.initialize_config()
 
     # 'do' the given command.
     globals()['do_'+config.config.command]()
     log.test_log.close()
+
+
+def entrypoint():
+    main()
+
+
+if __name__ == '__main__':
+    entrypoint()

@@ -3,3 +3,4 @@
 *.egg
 venv
 testing-results
+build

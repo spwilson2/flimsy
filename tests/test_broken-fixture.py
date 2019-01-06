@@ -1,10 +1,10 @@
-import whimsy
+import flimsy
 
 class aBrokenFixtureException(Exception):
     pass
 
 def create_fixture(method):
-    class BrokenFixture(whimsy.Fixture):
+    class BrokenFixture(flimsy.Fixture):
         def setup(self, testitem):
             pass
         
@@ -19,7 +19,7 @@ def create_fixture(method):
 def _broken_method(*args, **kwargs):
     raise aBrokenFixtureException('Broken Fixture')
 
-class EmptyTestCase(whimsy.TestCase):
+class EmptyTestCase(flimsy.TestCase):
     def test(self, test_parameters):
         pass
 
@@ -31,7 +31,7 @@ broken_setup = EmptyTestCase(name='Broken Fixture Setup')
 broken_setup.fixtures.append(create_fixture('setup'))
 
 
-class BrokenTestSuite(whimsy.TestSuite):
+class BrokenTestSuite(flimsy.TestSuite):
     fixtures = [create_fixture('setup')]
 
 BrokenTestSuite(tests = [EmptyTestCase(name='Errored Test')])
